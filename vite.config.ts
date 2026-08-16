@@ -3,8 +3,7 @@ import { defineConfig, type Plugin } from 'vite'
 
 function resolveSiteUrl() {
   const configured = process.env.VITE_SITE_URL
-  const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  const candidate = configured || (vercelUrl ? `https://${vercelUrl}` : '')
+  const candidate = configured || 'https://quietmarkdown.vercel.app'
   return /^https?:\/\//.test(candidate) ? candidate.replace(/\/$/, '') : ''
 }
 
