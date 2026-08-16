@@ -249,8 +249,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   color: var(--ink-faint);
   font-size: 9px;
 }
-.footer-privacy, .footer-status { display: flex; align-items: center; gap: 6px; }
+.footer-left, .footer-privacy, .footer-status, .footer-repo { display: flex; align-items: center; }
+.footer-left { min-width: 0; gap: 12px; }
+.footer-privacy { gap: 6px; }
 .footer-privacy svg { color: var(--success); }
+.footer-repo { gap: 5px; color: var(--ink-soft); font-size: 9px; font-weight: 650; text-decoration: none; white-space: nowrap; transition: color .15s ease; }
+.footer-repo:hover { color: var(--accent); }
 .footer-credit { margin: 0; white-space: nowrap; letter-spacing: .01em; }
 .footer-heart { display: inline-block; color: var(--accent); font-size: 11px; animation: heart-beat 2.8s ease-in-out infinite; }
 .footer-credit a { color: var(--ink-soft); font-weight: 650; text-decoration: none; text-underline-offset: 3px; transition: color .15s ease; }
@@ -474,10 +478,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .preview-scroll, .editor-wrap textarea { padding: 30px 24px 100px; }
   .pane-label { padding: 0 12px; }
   .app-footer { min-height: 42px; grid-template-columns: 1fr auto 1fr; padding: 0 12px; }
+  .footer-left { grid-column: 1; gap: 0; }
   .footer-privacy { display: none; }
+  .footer-repo { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; }
+  .footer-repo span { display: none; }
   .footer-credit { grid-column: 2; }
   .footer-status { grid-column: 3; }
-  .footer-save { position: absolute; left: 12px; display: flex; }
+  .footer-save { position: absolute; left: 48px; display: flex; }
   .footer-status button { display: flex; }
   .shortcuts-popover { top: 49px; right: 54px; }
   .modal-backdrop { padding: 0; }
