@@ -251,8 +251,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 }
 .footer-left, .footer-privacy, .footer-status, .footer-repo { display: flex; align-items: center; }
 .footer-left { min-width: 0; gap: 12px; }
-.footer-privacy { gap: 6px; }
+.footer-privacy { gap: 6px; color: var(--ink-faint); font-size: 9px; font-weight: 600; text-decoration: none; transition: color .15s ease; }
 .footer-privacy svg { color: var(--success); }
+.footer-privacy:hover { color: var(--ink-soft); }
 .footer-repo { gap: 5px; color: var(--ink-soft); font-size: 9px; font-weight: 650; text-decoration: none; white-space: nowrap; transition: color .15s ease; }
 .footer-repo:hover { color: var(--accent); }
 .footer-credit { margin: 0; white-space: nowrap; letter-spacing: .01em; }

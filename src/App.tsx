@@ -60,13 +60,19 @@ import {
   type WatermarkPosition,
 } from './types'
 
-const starterMarkdown = `# The QuietMark field guide
+const starterMarkdown = `# QuietMark Markdown Editor field guide
 
-*A fully local Markdown document, ready to become something worth sharing.*
+*A private Markdown editor with PDF, HTML, and PNG export, ready to become something worth sharing.*
 
-QuietMark is a calm place to shape an idea into a **clear, portable document**. This starter note shows the Markdown features available at your fingertips, from quick inline styling to polished export-ready structure.
+**Updated August 2026** · QuietMark is a calm place to shape an idea into a **clear, portable document**. This starter note shows the Markdown features available at your fingertips, from quick inline styling to polished export-ready structure.
 
 > Good tools make room for good thinking. Keep the words, remove the noise.
+
+## Who QuietMark is for
+
+- **Writers** who want a focused Markdown editor and beautiful, shareable documents
+- **Students** who need a private draft space with reliable PDF export
+- **Professionals** who want presentable notes, proposals, and reports without sending work to a cloud service
 
 ## 1. Start with a useful brief
 
@@ -129,11 +135,25 @@ const draft: Draft = {
 
 ---
 
+## Frequently asked questions
+
+### Does QuietMark upload my document?
+
+No. QuietMark is frontend-only. Your draft and export preferences stay in this browser unless you download or share a file yourself.
+
+### Which export should I choose?
+
+Use **PDF** for a print-ready document, **HTML** for a portable styled page, and **PNG pages** when you need high-resolution image pages for sharing.
+
+### Can I use images in a document?
+
+Yes. Local image paths are the most dependable choice for privacy and export. Images hosted on another service can be affected by that service's browser permissions.
+
 ## 6. Finish with intent
 
 Choose **Editorial** for a warm, expressive essay, **Minimal** for a quiet working document, or **Academic** for a formal paper with numbered sections. Then open **Export** to set paper size, typography, color, and a watermark before downloading.
 
-Your Markdown remains the source of truth. Everything else is presentation.`
+Your Markdown remains the source of truth. Everything else is presentation. QuietMark is open source on [GitHub](https://github.com/GautamVhavle/QuietMark).`
 
 const STORAGE_KEY = 'quietmark:document:v1'
 const SETTINGS_KEY = 'quietmark:export:v1'
@@ -164,7 +184,7 @@ const loadDocument = () => {
   } catch {
     // Invalid storage should never prevent the editor from loading.
   }
-  return { title: 'The QuietMark field guide', markdown: starterMarkdown }
+  return { title: 'QuietMark Markdown Editor field guide', markdown: starterMarkdown }
 }
 
 const loadSettings = () => {
@@ -1071,10 +1091,10 @@ function App() {
 
       <footer className="app-footer">
         <div className="footer-left">
-          <div className="footer-privacy">
+          <a className="footer-privacy" href="/privacy">
             <ShieldCheck size={13} />
-            <span>Private by design · your words stay here</span>
-          </div>
+            <span>Private by design</span>
+          </a>
           <a
             className="footer-repo"
             href="https://github.com/GautamVhavle/QuietMark"
