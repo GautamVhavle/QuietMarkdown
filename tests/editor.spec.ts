@@ -9,18 +9,31 @@ test.beforeEach(async ({ page }) => {
 test('loads a local-first document and renders Markdown', async ({ page }, testInfo) => {
   await expect(page.getByRole('banner').getByText('QuietMarkdown')).toBeVisible()
   await expect(page.getByLabel('Markdown content')).toContainText('# QuietMarkdown editor field guide')
-  if (testInfo.project.name === 'mobile-chromium') {
+  if (testInfo.project.name !== 'desktop-chromium') {
     await page.getByRole('button', { name: 'Preview' }).click()
   }
   await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
-  const saveLabel = testInfo.project.name === 'mobile-chromium'
+  const saveLabel = testInfo.project.name !== 'desktop-chromium'
     ? page.locator('.footer-save')
     : page.locator('.save-indicator')
   await expect(saveLabel).toHaveText(/Saved/)
 })
 
+test('uses focused Write and Preview modes on portrait devices', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'desktop-chromium', 'Desktop keeps the productive split view.')
+  await expect(page.getByRole('button', { name: 'Split' })).toBeHidden()
+  await expect(page.getByLabel('Markdown content')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Preview' }).click()
+  await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
+  await expect(page.getByLabel('Markdown content')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Write' }).click()
+  await expect(page.getByLabel('Markdown content')).toBeVisible()
+})
+
 test('synchronizes editor and preview scrolling in split view', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile-chromium', 'Split preview is intentionally tabbed on small screens.')
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Split preview is intentionally tabbed on small screens.')
   const editor = page.getByLabel('Markdown content')
   await editor.fill(Array.from({ length: 45 }, (_, index) => `## Section ${index + 1}\n\nA paragraph with enough content to test proportional synchronized scrolling between source and preview.`).join('\n\n'))
   await page.waitForTimeout(120)
@@ -40,7 +53,7 @@ test('synchronizes editor and preview scrolling in split view', async ({ page },
 
 test('publishes search metadata and accessible creator attribution', async ({ page }) => {
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Markdown privately/)
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/og-image.png')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://quietmarkdown.vercel.app/og-image.png')
   await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'en_US')
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute('href', '/favicon.ico')
@@ -58,11 +71,11 @@ test('publishes search metadata and accessible creator attribution', async ({ pa
 test('updates preview and applies keyboard formatting', async ({ page }, testInfo) => {
   const editor = page.getByLabel('Markdown content')
   await editor.fill('# Hello\n\nquiet writing')
-  if (testInfo.project.name === 'mobile-chromium') {
+  if (testInfo.project.name !== 'desktop-chromium') {
     await page.getByRole('button', { name: 'Preview' }).click()
   }
   await expect(page.getByRole('heading', { name: 'Hello' })).toBeVisible()
-  if (testInfo.project.name === 'mobile-chromium') {
+  if (testInfo.project.name !== 'desktop-chromium') {
     await page.getByRole('button', { name: 'Write' }).click()
   }
 
@@ -99,7 +112,7 @@ test('opens a local Markdown file', async ({ page }, testInfo) => {
     buffer: Buffer.from('# Field notes\n\nOpened from disk.'),
   })
   await expect(page.getByLabel('Document title')).toHaveValue('field-notes')
-  if (testInfo.project.name === 'mobile-chromium') {
+  if (testInfo.project.name !== 'desktop-chromium') {
     await page.getByRole('button', { name: 'Preview' }).click()
   }
   await expect(page.getByRole('heading', { name: 'Field notes' })).toBeVisible()

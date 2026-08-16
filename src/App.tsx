@@ -735,7 +735,9 @@ function App() {
   const [title, setTitle] = useState(initialDocument.title)
   const [markdown, setMarkdown] = useState(initialDocument.markdown)
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
-  const [viewMode, setViewMode] = useState<ViewMode>('split')
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    window.matchMedia('(max-width: 900px)').matches ? 'write' : 'split',
+  )
   const [exportOpen, setExportOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [exportSettings, setExportSettings] = useState<ExportSettings>(loadSettings)
@@ -970,6 +972,7 @@ function App() {
           ] as const).map(([mode, Icon, label]) => (
             <button
               key={mode}
+              data-view={mode}
               className={viewMode === mode ? 'active' : ''}
               onClick={() => setViewMode(mode)}
               aria-pressed={viewMode === mode}
