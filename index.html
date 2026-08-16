@@ -7,8 +7,12 @@
     <meta name="description" content="Write Markdown privately with live preview, local autosave, beautiful PDF, HTML and PNG export, and customizable document watermarks. No account required." />
     <meta name="application-name" content="QuietMark" />
     <meta name="author" content="Gautam Vhavle" />
-    <meta name="keywords" content="Markdown editor, online Markdown editor, Markdown preview, Markdown to PDF, Markdown export, document watermark, private editor" />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="keywords" content="Markdown editor, online Markdown editor, private Markdown editor, Markdown preview, Markdown to PDF, Markdown to PNG, Markdown export, PDF watermark, document watermark, local-first writing" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="QuietMark" />
     <meta id="theme-color" name="theme-color" content="#f7f6f3" />
     <meta name="color-scheme" content="light dark" />
 
@@ -19,10 +23,13 @@
     <link rel="manifest" href="/site.webmanifest" />
 
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="QuietMark" />
     <meta property="og:title" content="QuietMark: Write quietly. Export beautifully." />
     <meta property="og:description" content="A private, local Markdown editor with considered typography, polished exports, and customizable watermarks." />
     <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:secure_url" content="/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="QuietMark: Write quietly. Export beautifully." />
@@ -36,14 +43,30 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "QuietMark",
-        "applicationCategory": "ProductivityApplication",
-        "operatingSystem": "Any modern web browser",
-        "description": "A private, frontend-only Markdown editor with live preview and polished PDF, HTML and PNG exports.",
-        "author": { "@type": "Person", "name": "Gautam Vhavle", "url": "https://gautamvhavle.xyz/" },
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "featureList": "Live Markdown preview, local autosave, file import and download, PDF export, HTML export, PNG export, customizable watermarks, light and dark themes"
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://quietmark.vercel.app/#app",
+            "name": "QuietMark",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Any modern web browser",
+            "browserRequirements": "Requires a modern browser with JavaScript enabled.",
+            "description": "A private, frontend-only Markdown editor with live preview and polished PDF, HTML and PNG exports.",
+            "image": "https://quietmark.vercel.app/og-image.png",
+            "sameAs": "https://github.com/GautamVhavle/QuietMark",
+            "author": { "@type": "Person", "name": "Gautam Vhavle", "url": "https://gautamvhavle.xyz/" },
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "featureList": "Live Markdown preview, local autosave, file import and download, PDF export, HTML export, PNG page export, customizable watermarks, light and dark themes"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://quietmark.vercel.app/#website",
+            "name": "QuietMark",
+            "description": "Private Markdown writing and beautiful browser-based document export.",
+            "inLanguage": "en-US",
+            "publisher": { "@type": "Person", "name": "Gautam Vhavle", "url": "https://gautamvhavle.xyz/" }
+          }
+        ]
       }
     </script>
   </head>

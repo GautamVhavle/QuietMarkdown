@@ -22,6 +22,8 @@ test('loads a local-first document and renders Markdown', async ({ page }, testI
 test('publishes search metadata and accessible creator attribution', async ({ page }) => {
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Markdown privately/)
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/og-image.png')
+  await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'en_US')
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute('href', '/favicon.svg')
   const creator = page.getByRole('link', { name: /Gautam Vhavle/ })
   await expect(creator).toBeVisible()

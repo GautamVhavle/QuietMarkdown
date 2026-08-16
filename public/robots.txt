@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-# Add a Sitemap line after assigning the production domain.
+Sitemap: https://quietmark.vercel.app/sitemap.xml

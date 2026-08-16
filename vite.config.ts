@@ -14,6 +14,7 @@ function seoPlugin(siteUrl: string): Plugin {
     transformIndexHtml(html) {
       if (!siteUrl) return html
       return html
+        .replaceAll('https://quietmark.vercel.app', siteUrl)
         .replaceAll('content="/og-image.png"', `content="${siteUrl}/og-image.png"`)
         .replace(
           '    <script type="application/ld+json">',
