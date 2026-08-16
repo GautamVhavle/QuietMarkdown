@@ -723,6 +723,8 @@ function App() {
   const [dragging, setDragging] = useState(false)
   const [toast, setToast] = useState('')
   const editorRef = useRef<HTMLTextAreaElement>(null)
+  const previewScrollRef = useRef<HTMLDivElement>(null)
+  const scrollSyncOriginRef = useRef<'editor' | 'preview' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rendered = useMemo(() => renderMarkdown(markdown), [markdown])
   const stats = useMemo(() => countDocument(markdown), [markdown])
@@ -755,6 +757,31 @@ function App() {
     const timer = window.setTimeout(() => setToast(''), 2600)
     return () => window.clearTimeout(timer)
   }, [toast])
+
+  const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
+    const sourceRange = source.scrollHeight - source.clientHeight
+    const targetRange = target.scrollHeight - target.clientHeight
+    if (sourceRange <= 0 || targetRange <= 0) return
+    target.scrollTop = (source.scrollTop / sourceRange) * targetRange
+  }
+
+  const handleEditorScroll = () => {
+    const editor = editorRef.current
+    const preview = previewScrollRef.current
+    if (!editor || !preview || scrollSyncOriginRef.current === 'preview') return
+    scrollSyncOriginRef.current = 'editor'
+    syncScrollPosition(editor, preview)
+    requestAnimationFrame(() => { scrollSyncOriginRef.current = null })
+  }
+
+  const handlePreviewScroll = () => {
+    const editor = editorRef.current
+    const preview = previewScrollRef.current
+    if (!editor || !preview || scrollSyncOriginRef.current === 'editor') return
+    scrollSyncOriginRef.current = 'preview'
+    syncScrollPosition(preview, editor)
+    requestAnimationFrame(() => { scrollSyncOriginRef.current = null })
+  }
 
   const setEditorValue = (next: string, selectionStart: number, selectionEnd: number) => {
     setMarkdown(next)
@@ -1014,6 +1041,7 @@ function App() {
               ref={editorRef}
               value={markdown}
               onChange={(event) => setMarkdown(event.target.value)}
+              onScroll={handleEditorScroll}
               onKeyDown={handleEditorKeyDown}
               spellCheck="true"
               autoCapitalize="sentences"
@@ -1025,8 +1053,8 @@ function App() {
         <div className="pane-divider" />
 
         <section className="preview-pane" aria-label="Rendered preview">
-          <div className="pane-label"><span>Preview</span><span>Live</span></div>
-          <div className="preview-scroll">
+          <div className="pane-label"><span>Preview</span><span>Live sync</span></div>
+          <div ref={previewScrollRef} className="preview-scroll" onScroll={handlePreviewScroll}>
             {markdown ? (
               <article className="markdown-body" dangerouslySetInnerHTML={{ __html: rendered }} />
             ) : (

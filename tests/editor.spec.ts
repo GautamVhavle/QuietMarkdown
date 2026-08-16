@@ -19,6 +19,25 @@ test('loads a local-first document and renders Markdown', async ({ page }, testI
   await expect(saveLabel).toHaveText(/Saved/)
 })
 
+test('synchronizes editor and preview scrolling in split view', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chromium', 'Split preview is intentionally tabbed on small screens.')
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill(Array.from({ length: 45 }, (_, index) => `## Section ${index + 1}\n\nA paragraph with enough content to test proportional synchronized scrolling between source and preview.`).join('\n\n'))
+  await page.waitForTimeout(120)
+
+  await editor.evaluate((element: HTMLTextAreaElement) => {
+    element.scrollTop = element.scrollHeight
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await expect.poll(async () => page.locator('.preview-scroll').evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+
+  await page.locator('.preview-scroll').evaluate((element: HTMLDivElement) => {
+    element.scrollTop = 0
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await expect.poll(async () => editor.evaluate((element: HTMLTextAreaElement) => element.scrollTop)).toBeLessThan(10)
+})
+
 test('publishes search metadata and accessible creator attribution', async ({ page }) => {
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Markdown privately/)
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', '/og-image.png')
