@@ -11,6 +11,8 @@
 <p align="center">
   <a href="https://quietmark.vercel.app/"><strong>Open QuietMark</strong></a>
   &nbsp;·&nbsp;
+  <a href="https://quietmark.vercel.app/"><strong>quietmark.vercel.app</strong></a>
+  &nbsp;·&nbsp;
   <a href="#features">Features</a>
   &nbsp;·&nbsp;
   <a href="#quick-start">Quick start</a>
