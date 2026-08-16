@@ -1,6 +1,6 @@
-# Contributing to QuietMark
+# Contributing to QuietMarkdown
 
-Thank you for helping improve QuietMark.
+Thank you for helping improve QuietMarkdown.
 
 ## Product principles
 

@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="public/favicon.svg" width="72" height="72" alt="QuietMark logo" />
+  <img src="public/favicon.svg" width="72" height="72" alt="QuietMarkdown logo" />
 </p>
 
-<h1 align="center">QuietMark</h1>
+<h1 align="center">QuietMarkdown</h1>
 
 <p align="center">
   A private, local-first Markdown editor for writing quickly and exporting beautifully.
 </p>
 
 <p align="center">
-  <a href="https://quietmark.vercel.app/"><strong>Open QuietMark</strong></a>
+  <a href="https://quietmarkdown.vercel.app/"><strong>Open QuietMarkdown</strong></a>
   &nbsp;·&nbsp;
-  <a href="https://quietmark.vercel.app/"><strong>quietmark.vercel.app</strong></a>
+  <a href="https://quietmarkdown.vercel.app/"><strong>quietmarkdown.vercel.app</strong></a>
   &nbsp;·&nbsp;
   <a href="#features">Features</a>
   &nbsp;·&nbsp;
@@ -21,19 +21,19 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GautamVhavle/QuietMark/actions"><img src="https://img.shields.io/github/actions/workflow/status/GautamVhavle/QuietMark/ci.yml?branch=main&style=flat-square&label=checks" alt="Checks" /></a>
-  <a href="https://quietmark.vercel.app/"><img src="https://img.shields.io/badge/live-quietmark.vercel.app-242421?style=flat-square" alt="Live site" /></a>
+  <a href="https://github.com/GautamVhavle/QuietMarkdown/actions"><img src="https://img.shields.io/github/actions/workflow/status/GautamVhavle/QuietMarkdown/ci.yml?branch=main&style=flat-square&label=checks" alt="Checks" /></a>
+  <a href="https://quietmarkdown.vercel.app/"><img src="https://img.shields.io/badge/live-quietmarkdown.vercel.app-242421?style=flat-square" alt="Live site" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-d85b3f?style=flat-square" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/privacy-local--first-4f8662?style=flat-square" alt="Local first privacy" />
 </p>
 
 <p align="center">
-  <img src="public/product-preview.png" alt="QuietMark editor in split view with Markdown source and live preview" width="100%" />
+  <img src="public/product-preview.png" alt="QuietMarkdown editor in split view with Markdown source and live preview" width="100%" />
 </p>
 
-## Why QuietMark?
+## Why QuietMarkdown?
 
-Markdown writing tools tend to choose between two extremes: bare browser utilities with fragile exports, or feature-heavy workspaces that make a blank page feel like a setup task. QuietMark stays deliberately small on the surface and capable underneath.
+Markdown writing tools tend to choose between two extremes: bare browser utilities with fragile exports, or feature-heavy workspaces that make a blank page feel like a setup task. QuietMarkdown stays deliberately small on the surface and capable underneath.
 
 - **Private by design.** No account, backend, database, analytics, or document upload.
 - **Fast where it matters.** Write in Markdown and see a refined preview immediately.
@@ -85,8 +85,8 @@ Watermarks are part of the export experience, not an afterthought. Control text,
 ### Run locally
 
 ```bash
-git clone https://github.com/GautamVhavle/QuietMark.git
-cd QuietMark
+git clone https://github.com/GautamVhavle/QuietMarkdown.git
+cd QuietMarkdown
 npm install
 npm run dev
 ```
@@ -137,7 +137,7 @@ tests/                  # Playwright desktop and mobile user workflows
 
 ## Privacy
 
-QuietMark runs entirely in the browser. Markdown is the source of truth and draft plus export preferences are stored locally in browser storage.
+QuietMarkdown runs entirely in the browser. Markdown is the source of truth and draft plus export preferences are stored locally in browser storage.
 
 A few practical notes:
 
@@ -147,14 +147,14 @@ A few practical notes:
 
 ## Deployment
 
-QuietMark is ready to deploy as a static application on Vercel. `vercel.json` configures the Vite build, output directory, security headers, clean URLs, and immutable caching for compiled assets.
+QuietMarkdown is ready to deploy as a static application on Vercel. `vercel.json` configures the Vite build, output directory, security headers, clean URLs, and immutable caching for compiled assets.
 
 ```bash
 npm run build
 npx vercel --prod
 ```
 
-Vercel supplies a production URL automatically. If you connect a custom domain, set `VITE_SITE_URL` to its origin so QuietMark can generate canonical and Open Graph URLs correctly. See `.env.example`.
+Vercel supplies a production URL automatically. If you connect a custom domain, set `VITE_SITE_URL` to its origin so QuietMarkdown can generate canonical and Open Graph URLs correctly. See `.env.example`.
 
 ## Contributing
 
@@ -162,7 +162,7 @@ Small, thoughtful improvements are welcome. Please read [CONTRIBUTING.md](CONTRI
 
 ## License
 
-QuietMark is released under the [MIT License](LICENSE).
+QuietMarkdown is released under the [MIT License](LICENSE).
 
 ## Credits
 

@@ -1,4 +1,4 @@
-name: Verify QuietMark
+name: Verify QuietMarkdown
 
 on:
   push:

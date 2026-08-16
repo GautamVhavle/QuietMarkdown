@@ -7,12 +7,12 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('loads a local-first document and renders Markdown', async ({ page }, testInfo) => {
-  await expect(page.getByRole('banner').getByText('QuietMark')).toBeVisible()
-  await expect(page.getByLabel('Markdown content')).toContainText('# QuietMark Markdown Editor field guide')
+  await expect(page.getByRole('banner').getByText('QuietMarkdown')).toBeVisible()
+  await expect(page.getByLabel('Markdown content')).toContainText('# QuietMarkdown editor field guide')
   if (testInfo.project.name === 'mobile-chromium') {
     await page.getByRole('button', { name: 'Preview' }).click()
   }
-  await expect(page.getByRole('heading', { name: 'QuietMark Markdown Editor field guide' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
   const saveLabel = testInfo.project.name === 'mobile-chromium'
     ? page.locator('.footer-save')
     : page.locator('.save-indicator')
@@ -48,9 +48,9 @@ test('publishes search metadata and accessible creator attribution', async ({ pa
   const creator = page.getByRole('link', { name: /Gautam Vhavle/ })
   await expect(creator).toBeVisible()
   await expect(creator).toHaveAttribute('href', 'https://gautamvhavle.xyz/')
-  const repository = page.getByRole('link', { name: 'View QuietMark on GitHub' })
+  const repository = page.getByRole('link', { name: 'View QuietMarkdown on GitHub' })
   await expect(repository).toBeVisible()
-  await expect(repository).toHaveAttribute('href', 'https://github.com/GautamVhavle/QuietMark')
+  await expect(repository).toHaveAttribute('href', 'https://github.com/GautamVhavle/QuietMarkdown')
   const privacy = page.locator('.footer-privacy')
   await expect(privacy).toHaveAttribute('href', '/privacy')
 })

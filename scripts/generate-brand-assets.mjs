@@ -30,8 +30,8 @@ await page.setContent(`<!doctype html>
   .pill{display:inline-flex;align-items:center;gap:8px;margin-bottom:19px;padding:8px 13px;border:1px solid #d8d5cc;border-radius:999px;background:rgba(255,255,255,.62);color:#4f755b;font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}.dot{width:7px;height:7px;border-radius:50%;background:#4f8a61}
   h1{max-width:720px;margin:0;font-family:Georgia,"Times New Roman",serif;font-size:66px;font-weight:500;line-height:1.02;letter-spacing:-.055em}h1 em{color:#d85b3f;font-style:normal}
   p{margin:24px 0 0;color:#68665f;font-size:21px;line-height:1.45}.footer{position:absolute;bottom:57px;left:88px;color:#8a8880;font-size:15px;letter-spacing:.01em}
-</style></head><body><main class="canvas"><section class="content"><div class="brand">${mark}<span>QuietMark</span></div><div class="pill"><i class="dot"></i>Private by design</div><h1>Write quietly.<br/><em>Export beautifully.</em></h1><p>A fast, local Markdown editor with considered typography<br/>and customizable watermarks.</p></section><div class="paper-lines"></div><div class="footer">Markdown · PDF · HTML · PNG</div></main></body></html>`)
+</style></head><body><main class="canvas"><section class="content"><div class="brand">${mark}<span>QuietMarkdown</span></div><div class="pill"><i class="dot"></i>Private by design</div><h1>Write quietly.<br/><em>Export beautifully.</em></h1><p>A fast, local Markdown editor with considered typography<br/>and customizable watermarks.</p></section><div class="paper-lines"></div><div class="footer">Markdown · PDF · HTML · PNG</div></main></body></html>`)
 await page.screenshot({ path: 'public/og-image.png' })
 
 await browser.close()
-console.log('Generated QuietMark icon and social assets.')
+console.log('Generated QuietMarkdown icon and social assets.')

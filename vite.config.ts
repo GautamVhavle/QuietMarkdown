@@ -10,19 +10,19 @@ function resolveSiteUrl() {
 
 function seoPlugin(siteUrl: string): Plugin {
   return {
-    name: 'quietmark-seo',
+    name: 'quietmarkdown-seo',
     transformIndexHtml(html) {
       if (!siteUrl) return html
       return html
-        .replaceAll('https://quietmark.vercel.app', siteUrl)
+        .replaceAll('https://quietmarkdown.vercel.app', siteUrl)
         .replaceAll('content="/og-image.png"', `content="${siteUrl}/og-image.png"`)
         .replace(
           '    <script type="application/ld+json">',
           `    <link rel="canonical" href="${siteUrl}/" />\n    <meta property="og:url" content="${siteUrl}/" />\n    <script type="application/ld+json">`,
         )
         .replace(
-          '"name": "QuietMark",',
-          `"name": "QuietMark",\n        "url": "${siteUrl}/",`,
+          '"name": "QuietMarkdown",',
+          `"name": "QuietMarkdown",\n        "url": "${siteUrl}/",`,
         )
     },
   }

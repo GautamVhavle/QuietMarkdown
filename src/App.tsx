@@ -60,15 +60,15 @@ import {
   type WatermarkPosition,
 } from './types'
 
-const starterMarkdown = `# QuietMark Markdown Editor field guide
+const starterMarkdown = `# QuietMarkdown editor field guide
 
 *A private Markdown editor with PDF, HTML, and PNG export, ready to become something worth sharing.*
 
-**Updated August 2026** · QuietMark is a calm place to shape an idea into a **clear, portable document**. This starter note shows the Markdown features available at your fingertips, from quick inline styling to polished export-ready structure.
+**Updated August 2026** · QuietMarkdown is a calm place to shape an idea into a **clear, portable document**. This starter note shows the Markdown features available at your fingertips, from quick inline styling to polished export-ready structure.
 
 > Good tools make room for good thinking. Keep the words, remove the noise.
 
-## Who QuietMark is for
+## Who QuietMarkdown is for
 
 - **Writers** who want a focused Markdown editor and beautiful, shareable documents
 - **Students** who need a private draft space with reliable PDF export
@@ -109,7 +109,7 @@ A sentence can be **important**, *considered*, or ~~unnecessary~~. Use inline co
 
 ## 4. Make the document visual
 
-![QuietMark document illustration](/quietmark-example.svg)
+![QuietMarkdown document illustration](/quietmarkdown-example.svg)
 
 *Use local images when you want reliable private exports. Images hosted elsewhere can be affected by browser permissions during PNG export.*
 
@@ -137,9 +137,9 @@ const draft: Draft = {
 
 ## Frequently asked questions
 
-### Does QuietMark upload my document?
+### Does QuietMarkdown upload my document?
 
-No. QuietMark is frontend-only. Your draft and export preferences stay in this browser unless you download or share a file yourself.
+No. QuietMarkdown is frontend-only. Your draft and export preferences stay in this browser unless you download or share a file yourself.
 
 ### Which export should I choose?
 
@@ -153,11 +153,11 @@ Yes. Local image paths are the most dependable choice for privacy and export. Im
 
 Choose **Editorial** for a warm, expressive essay, **Minimal** for a quiet working document, or **Academic** for a formal paper with numbered sections. Then open **Export** to set paper size, typography, color, and a watermark before downloading.
 
-Your Markdown remains the source of truth. Everything else is presentation. QuietMark is open source on [GitHub](https://github.com/GautamVhavle/QuietMark).`
+Your Markdown remains the source of truth. Everything else is presentation. QuietMarkdown is open source on [GitHub](https://github.com/GautamVhavle/QuietMarkdown).`
 
-const STORAGE_KEY = 'quietmark:document:v1'
-const SETTINGS_KEY = 'quietmark:export:v1'
-const THEME_KEY = 'quietmark:theme:v1'
+const STORAGE_KEY = 'quietmarkdown:document:v1'
+const SETTINGS_KEY = 'quietmarkdown:export:v1'
+const THEME_KEY = 'quietmarkdown:theme:v1'
 
 type SaveState = 'saved' | 'saving'
 type FormatAction =
@@ -184,7 +184,7 @@ const loadDocument = () => {
   } catch {
     // Invalid storage should never prevent the editor from loading.
   }
-  return { title: 'QuietMark Markdown Editor field guide', markdown: starterMarkdown }
+  return { title: 'QuietMarkdown editor field guide', markdown: starterMarkdown }
 }
 
 const loadSettings = () => {
@@ -956,9 +956,9 @@ function App() {
       onDrop={handleDrop}
     >
       <header className="app-header">
-        <div className="brand" aria-label="QuietMark home">
+        <div className="brand" aria-label="QuietMarkdown home">
           <span className="brand-mark">Q</span>
-          <span className="brand-name">QuietMark</span>
+          <span className="brand-name">QuietMarkdown</span>
           <span className="local-badge"><ShieldCheck size={11} /> Local</span>
         </div>
 
@@ -1095,16 +1095,6 @@ function App() {
             <ShieldCheck size={13} />
             <span>Private by design</span>
           </a>
-          <a
-            className="footer-repo"
-            href="https://github.com/GautamVhavle/QuietMark"
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-label="View QuietMark on GitHub"
-          >
-            <GitHubMark size={13} />
-            <span>View on GitHub</span>
-          </a>
         </div>
         <p className="footer-credit">
           Built with <span className="footer-heart" aria-label="love">♥</span> by{' '}
@@ -1113,6 +1103,16 @@ function App() {
           </a>
         </p>
         <div className="footer-status">
+          <a
+            className="footer-repo"
+            href="https://github.com/GautamVhavle/QuietMarkdown"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="View QuietMarkdown on GitHub"
+          >
+            <GitHubMark size={13} />
+            <span>View on GitHub</span>
+          </a>
           <span className={`footer-save ${saveState}`}><b /> {saveState === 'saved' ? 'Saved' : 'Saving'}</span>
           <button onClick={() => setExportOpen(true)}><FileDown size={14} /> Export</button>
         </div>
