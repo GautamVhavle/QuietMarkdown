@@ -1,0 +1,44 @@
+{
+  "name": "quietmark",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "assets:generate": "node scripts/generate-brand-assets.mjs",
+    "build": "tsc -b && vite build",
+    "lint": "eslint . --max-warnings 0",
+    "test:e2e": "playwright test",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/dm-mono": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/newsreader": "^5.3.0",
+    "@vitejs/plugin-react": "latest",
+    "dompurify": "latest",
+    "highlight.js": "latest",
+    "html-to-image": "latest",
+    "jszip": "^3.10.1",
+    "lucide-react": "latest",
+    "markdown-it": "latest",
+    "markdown-it-task-lists": "^2.1.1",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@playwright/test": "^1.62.1",
+    "@types/markdown-it": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "globals": "latest",
+    "typescript": "latest",
+    "typescript-eslint": "latest",
+    "vite": "latest"
+  }
+}
