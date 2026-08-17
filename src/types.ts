@@ -1,7 +1,15 @@
 export type ViewMode = 'write' | 'split' | 'preview'
 export type Theme = 'light' | 'dark'
-export type ExportPreset = 'editorial' | 'minimal' | 'academic'
-export type ExportFont = 'serif' | 'sans' | 'mono'
+export type ExportPreset =
+  | 'editorial'
+  | 'minimal'
+  | 'academic'
+  | 'manuscript'
+  | 'swiss'
+  | 'letterpress'
+  | 'executive'
+  | 'notebook'
+export type ExportFont = 'serif' | 'classic' | 'sans' | 'humanist' | 'mono' | 'typewriter'
 export type PaperSize = 'a4' | 'letter'
 export type WatermarkPosition =
   | 'center'
@@ -27,6 +35,7 @@ export interface ExportSettings {
   paper: PaperSize
   margin: number
   accent: string
+  background: string
   watermark: WatermarkSettings
 }
 
@@ -36,12 +45,13 @@ export const defaultExportSettings: ExportSettings = {
   paper: 'a4',
   margin: 64,
   accent: '#d85b3f',
+  background: '#ffffff',
   watermark: {
     enabled: true,
-    text: 'DRAFT',
+    text: 'quietmarkdown.vercel.app',
     position: 'center',
     opacity: 0.1,
-    size: 76,
+    size: 42,
     rotation: -28,
     color: '#8f4232',
   },

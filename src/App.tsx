@@ -23,7 +23,6 @@ import {
   Minus,
   Moon,
   PenLine,
-  Printer,
   Quote,
   ShieldCheck,
   Sparkles,
@@ -300,7 +299,7 @@ function ExportStudio({
   onToast,
 }: ExportStudioProps) {
   const captureRef = useRef<HTMLDivElement>(null)
-  const [exporting, setExporting] = useState<'png' | null>(null)
+  const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
   const dimensions = pageDimensions[settings.paper]
   const exportStyle = getExportStyle(settings)
   const pageStyle = {
@@ -335,9 +334,14 @@ function ExportStudio({
 
   const choosePreset = (preset: ExportSettings['preset']) => {
     const defaults = {
-      editorial: { font: 'serif' as const, accent: '#d85b3f', margin: 64 },
-      minimal: { font: 'sans' as const, accent: '#2f6f68', margin: 76 },
-      academic: { font: 'serif' as const, accent: '#243b5a', margin: 70 },
+      editorial: { font: 'serif' as const, accent: '#d85b3f', background: '#ffffff', margin: 64 },
+      minimal: { font: 'sans' as const, accent: '#2f6f68', background: '#ffffff', margin: 76 },
+      academic: { font: 'classic' as const, accent: '#243b5a', background: '#ffffff', margin: 70 },
+      manuscript: { font: 'typewriter' as const, accent: '#8a5c3d', background: '#fffdf8', margin: 72 },
+      swiss: { font: 'sans' as const, accent: '#e33d2e', background: '#ffffff', margin: 66 },
+      letterpress: { font: 'classic' as const, accent: '#9b4d35', background: '#fffaf2', margin: 72 },
+      executive: { font: 'humanist' as const, accent: '#285f91', background: '#ffffff', margin: 66 },
+      notebook: { font: 'mono' as const, accent: '#d69b31', background: '#fffdf5', margin: 68 },
     }[preset]
     onSettingsChange({ ...settings, preset, ...defaults })
   }
@@ -356,81 +360,105 @@ function ExportStudio({
     downloadBlob(
       createExportHtml(title, rendered, settings),
       `${safeFilename(title)}.html`,
-      'text/html;charset=utf-8',
+      'application/octet-stream',
     )
-    onToast('HTML downloaded')
+    onToast('HTML file downloaded without watermark')
   }
 
-  const exportPdf = () => {
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWindow) {
-      onToast('Allow pop-ups to open the PDF preview')
-      return
+  const exportPdf = async () => {
+    if (!captureRef.current) return
+    setExporting('pdf')
+    try {
+      const { PDFDocument, StandardFonts, degrees, rgb } = await import('pdf-lib')
+      const pdf = await PDFDocument.create()
+      const font = await pdf.embedFont(StandardFonts.HelveticaBold)
+      pdf.setTitle(title || 'Untitled document')
+      pdf.setSubject('Created locally with QuietMarkdown')
+      pdf.setAuthor('QuietMarkdown')
+      pdf.setCreator('quietmarkdown.vercel.app')
+      pdf.setProducer('QuietMarkdown')
+
+      const hex = settings.watermark.color.replace('#', '')
+      const watermarkColor = rgb(
+        Number.parseInt(hex.slice(0, 2), 16) / 255,
+        Number.parseInt(hex.slice(2, 4), 16) / 255,
+        Number.parseInt(hex.slice(4, 6), 16) / 255,
+      )
+      const watermark = settings.watermark
+
+      await renderExportPages(async (canvas) => {
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((value) => (value ? resolve(value) : reject(new Error('PDF page encoding failed'))), 'image/png')
+        })
+        const image = await pdf.embedPng(await blob.arrayBuffer())
+        const page = pdf.addPage([dimensions.width, dimensions.height])
+        page.drawImage(image, { x: 0, y: 0, width: dimensions.width, height: dimensions.height })
+
+        if (watermark.enabled && watermark.text.trim()) {
+          const text = watermark.text.trim()
+          let size = watermark.size
+          let textWidth = font.widthOfTextAtSize(text, size)
+          const maxWidth = dimensions.width * 0.82
+          if (textWidth > maxWidth) {
+            size *= maxWidth / textWidth
+            textWidth = font.widthOfTextAtSize(text, size)
+          }
+          const options = { font, size, color: watermarkColor, opacity: watermark.opacity, rotate: degrees(watermark.rotation) }
+          const padding = 54
+          if (watermark.position === 'tiled') {
+            const stepX = Math.max(180, size * 2.8)
+            const stepY = Math.max(130, size * 2)
+            for (let y = -stepY; y < dimensions.height + stepY; y += stepY) {
+              for (let x = -stepX; x < dimensions.width + stepX; x += stepX) {
+                page.drawText(text, { x, y, ...options })
+              }
+            }
+          } else {
+            const positions = {
+              center: [(dimensions.width - textWidth) / 2, dimensions.height / 2],
+              'top-left': [padding, dimensions.height - padding - size],
+              'top-right': [dimensions.width - padding - textWidth, dimensions.height - padding - size],
+              'bottom-left': [padding, padding],
+              'bottom-right': [dimensions.width - padding - textWidth, padding],
+            } as const
+            const [x, y] = positions[watermark.position]
+            page.drawText(text, { x, y, ...options })
+          }
+        }
+        canvas.width = 1
+        canvas.height = 1
+      }, false)
+
+      const bytes = await pdf.save({ useObjectStreams: true })
+      downloadBlob(new Uint8Array(bytes).buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
+      onToast('PDF downloaded with a watermark on every page')
+    } catch {
+      onToast('This document could not be rendered as a PDF')
+    } finally {
+      setExporting(null)
     }
-    printWindow.document.open()
-    printWindow.document.write(createExportHtml(title, rendered, settings, true))
-    printWindow.document.close()
-    onToast('PDF print preview opened')
   }
 
   const exportPng = async () => {
     if (!captureRef.current) return
     setExporting('png')
-
     try {
-      await document.fonts.ready
-      const images = Array.from(captureRef.current.querySelectorAll('img'))
-      await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
-
-      const captureHeight = Math.max(dimensions.height, captureRef.current.scrollHeight)
-      const pageCount = Math.ceil(captureHeight / dimensions.height)
-      const pixelRatio = 2
-      const { toCanvas } = await import('html-to-image')
-      const viewport = document.createElement('div')
-      const pageSource = captureRef.current.cloneNode(true) as HTMLDivElement
-      viewport.className = 'png-page-viewport'
-      viewport.style.cssText = `position:fixed;left:0;top:0;z-index:-1;width:${dimensions.width}px;height:${dimensions.height}px;overflow:hidden;background:${exportStyle.background};pointer-events:none;`
-      pageSource.classList.remove('export-page-capture')
-      pageSource.classList.add('png-page-source')
-      pageSource.style.position = 'absolute'
-      pageSource.style.top = '0'
-      pageSource.style.left = '0'
-      pageSource.style.height = `${captureHeight}px`
-      pageSource.style.minHeight = `${captureHeight}px`
-      pageSource.style.transformOrigin = 'top left'
-      viewport.append(pageSource)
-      document.body.append(viewport)
-
-      const pageCanvases: HTMLCanvasElement[] = []
-      try {
-        for (let index = 0; index < pageCount; index += 1) {
-          pageSource.style.transform = `translateY(-${index * dimensions.height}px)`
-          const pageCanvas = await toCanvas(viewport, {
-            cacheBust: true,
-            pixelRatio,
-            backgroundColor: exportStyle.background,
-            width: dimensions.width,
-            height: dimensions.height,
-            canvasWidth: dimensions.width,
-            canvasHeight: dimensions.height,
-            skipAutoScale: true,
-          })
-          const context = pageCanvas.getContext('2d')
-          if (!context) throw new Error('Canvas is unavailable')
-          drawPngWatermark(context, pageCanvas.width, pageCanvas.height, pixelRatio)
-          pageCanvases.push(pageCanvas)
-        }
-      } finally {
-        viewport.remove()
-      }
-      const blobs = await Promise.all(pageCanvases.map((canvas) => new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('PNG encoding failed'))), 'image/png')
-      })))
+      const blobs: Blob[] = []
+      let pageCount = 0
+      await renderExportPages(async (canvas, index, total) => {
+        pageCount = total
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((value) => (value ? resolve(value) : reject(new Error('PNG encoding failed'))), 'image/png')
+        })
+        blobs.push(blob)
+        canvas.width = 1
+        canvas.height = 1
+        if (index % 2 === 1) await new Promise((resolve) => requestAnimationFrame(resolve))
+      })
       const filename = safeFilename(title)
-
       if (blobs.length === 1) {
         downloadBlob(blobs[0], `${filename}.png`, 'image/png')
-        onToast('High-resolution PNG downloaded')
+        onToast('High-resolution PNG page downloaded')
         return
       }
 
@@ -441,7 +469,7 @@ function ExportStudio({
       })
       const zip = await archive.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
       downloadBlob(zip, `${filename}-png-pages.zip`, 'application/zip')
-      onToast(`${pageCount} high-resolution PNG pages downloaded`)
+      onToast(`${pageCount} high-resolution PNG pages downloaded as ZIP`)
     } catch {
       onToast('This document could not be rendered as PNG pages')
     } finally {
@@ -449,7 +477,7 @@ function ExportStudio({
     }
   }
 
-  const drawPngWatermark = (
+  const drawExportWatermark = (
     context: CanvasRenderingContext2D,
     width: number,
     height: number,
@@ -461,14 +489,21 @@ function ExportStudio({
     context.save()
     context.globalAlpha = watermark.opacity
     context.fillStyle = watermark.color
-    context.font = `700 ${watermark.size * pixelRatio}px DM Sans, Arial, sans-serif`
-    context.textAlign = 'center'
     context.textBaseline = 'middle'
     const padding = 54 * pixelRatio
     const text = watermark.text.trim()
+    let size = watermark.size * pixelRatio
+    context.font = `700 ${size}px DM Sans, Arial, sans-serif`
+    const maxWidth = width * 0.82
+    const measuredWidth = context.measureText(text).width
+    if (measuredWidth > maxWidth) {
+      size *= maxWidth / measuredWidth
+      context.font = `700 ${size}px DM Sans, Arial, sans-serif`
+    }
 
-    const draw = (x: number, y: number) => {
+    const draw = (x: number, y: number, align: CanvasTextAlign = 'center') => {
       context.save()
+      context.textAlign = align
       context.translate(x, y)
       context.rotate((watermark.rotation * Math.PI) / 180)
       context.fillText(text, 0, 0)
@@ -476,26 +511,89 @@ function ExportStudio({
     }
 
     if (watermark.position === 'tiled') {
+      context.textAlign = 'center'
       context.translate(width / 2, height / 2)
       context.rotate((watermark.rotation * Math.PI) / 180)
-      const stepX = Math.max(160, watermark.size * 2.4) * pixelRatio
-      const stepY = Math.max(120, watermark.size * 1.8) * pixelRatio
+      const stepX = Math.max(180, watermark.size * 2.8) * pixelRatio
+      const stepY = Math.max(130, watermark.size * 2) * pixelRatio
       for (let y = -height; y <= height; y += stepY) {
         for (let x = -width; x <= width; x += stepX) context.fillText(text, x, y)
       }
     } else {
       const positions = {
-        center: [width / 2, height / 2],
-        'top-left': [padding, padding],
-        'top-right': [width - padding, padding],
-        'bottom-left': [padding, height - padding],
-        'bottom-right': [width - padding, height - padding],
+        center: [width / 2, height / 2, 'center'],
+        'top-left': [padding, padding, 'left'],
+        'top-right': [width - padding, padding, 'right'],
+        'bottom-left': [padding, height - padding, 'left'],
+        'bottom-right': [width - padding, height - padding, 'right'],
       } as const
-      const [x, y] = positions[watermark.position]
-      draw(x, y)
+      const [x, y, align] = positions[watermark.position]
+      draw(x, y, align)
     }
     context.restore()
   }
+
+  const renderExportPages = async (
+    processPage: (canvas: HTMLCanvasElement, index: number, total: number) => Promise<void> | void,
+    includeWatermark = true,
+  ) => {
+    if (!captureRef.current) return
+    await document.fonts.ready
+    const images = Array.from(captureRef.current.querySelectorAll('img'))
+    await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
+
+    const captureHeight = Math.max(dimensions.height, captureRef.current.scrollHeight)
+    const pageCount = Math.ceil(captureHeight / dimensions.height)
+    const pixelRatio = 2
+    const { toCanvas } = await import('html-to-image')
+    const viewport = document.createElement('div')
+    const pageSource = captureRef.current.cloneNode(true) as HTMLDivElement
+    viewport.className = 'export-page-viewport'
+    viewport.style.cssText = `position:fixed;left:0;top:0;z-index:-1;width:${dimensions.width}px;height:${dimensions.height}px;overflow:hidden;background:${exportStyle.background};pointer-events:none;`
+    pageSource.classList.remove('export-page-capture')
+    pageSource.classList.add('png-page-source')
+    pageSource.style.position = 'absolute'
+    pageSource.style.top = '0'
+    pageSource.style.left = '0'
+    pageSource.style.height = `${captureHeight}px`
+    pageSource.style.minHeight = `${captureHeight}px`
+    pageSource.style.transformOrigin = 'top left'
+    viewport.append(pageSource)
+    document.body.append(viewport)
+
+    try {
+      for (let index = 0; index < pageCount; index += 1) {
+        pageSource.style.transform = `translateY(-${index * dimensions.height}px)`
+        const canvas = await toCanvas(viewport, {
+          cacheBust: true,
+          pixelRatio,
+          backgroundColor: exportStyle.background,
+          width: dimensions.width,
+          height: dimensions.height,
+          canvasWidth: dimensions.width,
+          canvasHeight: dimensions.height,
+          skipAutoScale: true,
+        })
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error('Canvas is unavailable')
+        if (includeWatermark) drawExportWatermark(context, canvas.width, canvas.height, pixelRatio)
+        await processPage(canvas, index, pageCount)
+      }
+    } finally {
+      viewport.remove()
+    }
+  }
+
+  const presetOptions: Array<{ value: ExportSettings['preset']; label: string; detail: string }> = [
+    { value: 'editorial', label: 'Editorial', detail: 'Warm feature' },
+    { value: 'minimal', label: 'Minimal', detail: 'Quiet clarity' },
+    { value: 'academic', label: 'Academic', detail: 'Formal paper' },
+    { value: 'manuscript', label: 'Manuscript', detail: 'Writer draft' },
+    { value: 'swiss', label: 'Swiss', detail: 'Graphic modern' },
+    { value: 'letterpress', label: 'Letterpress', detail: 'Classic craft' },
+    { value: 'executive', label: 'Executive', detail: 'Sharp report' },
+    { value: 'notebook', label: 'Notebook', detail: 'Personal notes' },
+  ]
 
   const positionOptions: Array<{ value: WatermarkPosition; label: string }> = [
     { value: 'center', label: 'Center' },
@@ -532,28 +630,28 @@ function ExportStudio({
                 <div><span>01</span><h3>Style</h3></div>
                 <p>Choose a considered starting point.</p>
               </div>
-              <div className="preset-grid">
-                {(['editorial', 'minimal', 'academic'] as const).map((preset) => (
+              <div className="preset-row" role="list" aria-label="Document styles">
+                {presetOptions.map((preset) => (
                   <button
-                    key={preset}
-                    className={`preset-card ${settings.preset === preset ? 'selected' : ''}`}
-                    onClick={() => choosePreset(preset)}
+                    key={preset.value}
+                    className={`preset-card ${settings.preset === preset.value ? 'selected' : ''}`}
+                    onClick={() => choosePreset(preset.value)}
                   >
-                    <span className={`preset-swatch ${preset}`}>
+                    <span className={`preset-swatch ${preset.value}`}>
                       <i />
                       <i />
                       <i />
                     </span>
                     <span className="preset-copy">
-                      <strong>{preset}</strong>
-                      <small>{preset === 'editorial' ? 'Warm essay' : preset === 'minimal' ? 'Quiet sans' : 'Formal paper'}</small>
+                      <strong>{preset.label}</strong>
+                      <small>{preset.detail}</small>
                     </span>
-                    {settings.preset === preset && <Check size={14} />}
+                    {settings.preset === preset.value && <Check size={14} />}
                   </button>
                 ))}
               </div>
 
-              <div className="field-row three-up">
+              <div className="field-row four-up">
                 <label>
                   <span>Typeface</span>
                   <select
@@ -561,8 +659,11 @@ function ExportStudio({
                     onChange={(event) => updateSettings('font', event.target.value as ExportSettings['font'])}
                   >
                     <option value="serif">Literary</option>
-                    <option value="sans">Modern</option>
+                    <option value="classic">Classic serif</option>
+                    <option value="sans">Modern sans</option>
+                    <option value="humanist">Humanist</option>
                     <option value="mono">Monospace</option>
+                    <option value="typewriter">Typewriter</option>
                   </select>
                 </label>
                 <label>
@@ -582,8 +683,21 @@ function ExportStudio({
                       type="color"
                       value={settings.accent}
                       onChange={(event) => updateSettings('accent', event.target.value)}
+                      aria-label="Accent color"
                     />
                     <span>{settings.accent}</span>
+                  </span>
+                </label>
+                <label>
+                  <span>Page</span>
+                  <span className="color-field">
+                    <input
+                      type="color"
+                      value={settings.background}
+                      onChange={(event) => updateSettings('background', event.target.value)}
+                      aria-label="Page background color"
+                    />
+                    <span>{settings.background}</span>
                   </span>
                 </label>
               </div>
@@ -613,6 +727,7 @@ function ExportStudio({
                 </button>
               </div>
 
+              <p className="watermark-scope">Applied to every PDF and PNG page. HTML and Markdown stay clean.</p>
               <div className={settings.watermark.enabled ? '' : 'controls-disabled'}>
                 <label className="text-field">
                   <span>Watermark text</span>
@@ -691,7 +806,7 @@ function ExportStudio({
 
           <div className="export-preview-column">
             <div className="preview-label">
-              <span>Live preview</span>
+              <span>PDF / PNG preview</span>
               <span>{settings.paper.toUpperCase()} · {settings.font}</span>
             </div>
             <div className="export-preview-viewport">
@@ -705,14 +820,14 @@ function ExportStudio({
         <footer className="export-footer">
           <div className="privacy-note"><ShieldCheck size={15} /> Exports are created locally in your browser.</div>
           <div className="export-actions">
-            <button className="export-action" onClick={exportHtml}>
-              <CodeXml size={17} /><span><strong>HTML</strong><small>Portable page</small></span>
+            <button className="export-action" onClick={exportHtml} disabled={exporting !== null}>
+              <CodeXml size={17} /><span><strong>Download HTML</strong><small>No watermark</small></span>
             </button>
-            <button className="export-action" onClick={exportPng} disabled={exporting === 'png'}>
-              <ImageDown size={17} /><span><strong>{exporting ? 'Rendering…' : 'PNG pages'}</strong><small>2× pages, ZIP if needed</small></span>
+            <button className="export-action" onClick={exportPng} disabled={exporting !== null}>
+              <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Rendering pages…' : 'PNG pages'}</strong><small>One image per page</small></span>
             </button>
-            <button className="export-action primary" onClick={exportPdf}>
-              <Printer size={17} /><span><strong>PDF</strong><small>Print ready</small></span>
+            <button className="export-action primary" onClick={exportPdf} disabled={exporting !== null}>
+              <FileDown size={17} /><span><strong>{exporting === 'pdf' ? 'Creating PDF…' : 'Save as PDF'}</strong><small>Direct download</small></span>
             </button>
           </div>
         </footer>

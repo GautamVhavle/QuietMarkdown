@@ -1,9 +1,12 @@
 import type { ExportSettings } from '../types'
 
 const fonts = {
-  serif: "'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
-  sans: "Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  mono: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+  serif: "'Newsreader', 'Iowan Old Style', Georgia, serif",
+  classic: "Baskerville, 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
+  sans: "'DM Sans', Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  humanist: "Optima, Candara, 'Segoe UI', ui-sans-serif, sans-serif",
+  mono: "'DM Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+  typewriter: "'Courier Prime', Courier, 'Nimbus Mono PS', monospace",
 }
 
 const escapeHtml = (value: string) =>
@@ -43,78 +46,155 @@ export function getExportStyle(settings: ExportSettings) {
       body: '#17191c',
       muted: '#515963',
       heading: '#101216',
-      background: '#ffffff',
       rule: '#9da5ae',
       lineHeight: 1.64,
       headingWeight: 700,
     },
+    manuscript: {
+      body: '#292724',
+      muted: '#77716a',
+      heading: '#1f1d1a',
+      rule: '#d8d3cb',
+      lineHeight: 1.82,
+      headingWeight: 600,
+    },
+    swiss: {
+      body: '#202322',
+      muted: '#6d7471',
+      heading: '#0e1110',
+      rule: '#d8dedb',
+      lineHeight: 1.58,
+      headingWeight: 700,
+    },
+    letterpress: {
+      body: '#332d27',
+      muted: '#776b60',
+      heading: '#261f1a',
+      rule: '#d8cec4',
+      lineHeight: 1.74,
+      headingWeight: 600,
+    },
+    executive: {
+      body: '#232830',
+      muted: '#67717e',
+      heading: '#152033',
+      rule: '#cbd3dc',
+      lineHeight: 1.62,
+      headingWeight: 700,
+    },
+    notebook: {
+      body: '#2c2a27',
+      muted: '#777269',
+      heading: '#23211e',
+      rule: '#d8d1c6',
+      lineHeight: 1.76,
+      headingWeight: 650,
+    },
   }[settings.preset]
 
-  return { ...preset, fontFamily: fonts[settings.font] }
+  const color = settings.background.replace('#', '')
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16) / 255)
+  const luminance = channels.reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0)
+  const contrast = luminance < 0.42
+    ? { body: '#f1f0eb', muted: '#bbb9b1', heading: '#ffffff', rule: '#575752' }
+    : {}
+
+  return { ...preset, ...contrast, background: settings.background, fontFamily: fonts[settings.font] }
 }
 
 function getPresetCss(preset: ExportSettings['preset']) {
-  if (preset === 'editorial') {
-    return `
+  const styles: Record<ExportSettings['preset'], string> = {
+    editorial: `
       .document { max-width: 650px; margin: 0 auto; }
       h1 { max-width: 620px; margin-bottom: .72em; font-family: Georgia, serif; font-size: 3.625rem; font-weight: 500; line-height: 1.02; }
       h1 + p { color: var(--muted); font-size: 1.18rem; line-height: 1.58; }
       h2 { position: relative; border: 0; padding-bottom: 12px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 1.56rem; }
-      h2::after { position: absolute; bottom: 0; left: 0; width: 44px; height: 3px; border-radius: 2px; background: var(--accent); content: ''; }
+      h2::after { position: absolute; bottom: 0; left: 0; width: 44px; height: 3px; background: var(--accent); content: ''; }
       blockquote { margin: 2em 0; border: 0; padding: 8px 0 8px 28px; color: var(--heading); font-family: Georgia, serif; }
       blockquote p { font-size: 1.3rem; line-height: 1.55; }
-    `
-  }
-  if (preset === 'minimal') {
-    return `
+    `,
+    minimal: `
       .document { max-width: 590px; margin: 0 auto; }
       h1 { margin-bottom: 1.25em; font-family: inherit; font-size: 3.25rem; font-weight: 500; line-height: 1.06; letter-spacing: -.055em; }
-      h2 { border: 0; padding: 0; font-size: 1.38rem; font-weight: 600; letter-spacing: -.025em; }
+      h2 { border: 0; padding: 0; font-size: 1.38rem; font-weight: 600; }
       h3 { font-size: 1.06rem; }
       p, li { font-size: .94rem; }
       blockquote { border-left-width: 1px; padding-left: 18px; font-style: normal; }
-      pre { border: 0; border-radius: 4px; background: #f4f6f5; }
+      pre { border: 0; border-radius: 4px; }
       hr { width: 48px; margin-right: auto; margin-left: auto; border-color: var(--accent); }
-    `
+    `,
+    academic: `
+      .document { max-width: 675px; margin: 0 auto; counter-reset: section; }
+      h1 { position: relative; margin: 0 auto 2.2em; padding-bottom: 24px; font-family: Georgia, 'Times New Roman', serif; font-size: 2.25rem; line-height: 1.22; letter-spacing: 0; text-align: center; }
+      h1::after { position: absolute; right: 38%; bottom: 0; left: 38%; border-bottom: 1px solid var(--heading); content: ''; }
+      h2 { border: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 1.31rem; letter-spacing: 0; counter-increment: section; counter-reset: subsection; }
+      h2::before { content: counter(section) '. '; }
+      h3 { font-size: 1.06rem; letter-spacing: 0; counter-increment: subsection; }
+      h3::before { content: counter(section) '.' counter(subsection) ' '; }
+      p { text-align: justify; hyphens: auto; }
+      p, li { font-size: .94rem; }
+      blockquote { margin-right: 2em; margin-left: 2em; border: 0; padding: 0; color: var(--body); font-size: .92em; font-style: normal; }
+      li::marker { color: var(--heading); }
+      pre, img { border-radius: 0; }
+      table { border-top: 2px solid var(--heading); border-bottom: 2px solid var(--heading); }
+      th, td { border: 0; border-bottom: 1px solid var(--rule); }
+    `,
+    manuscript: `
+      .document { max-width: 610px; margin: 0 auto; }
+      h1 { margin-bottom: 1.45em; font-family: inherit; font-size: 2.45rem; font-weight: 600; letter-spacing: -.02em; text-align: center; }
+      h2 { border: 0; padding: 0; font-size: 1.18rem; letter-spacing: .08em; text-transform: uppercase; }
+      h3 { font-size: 1rem; text-decoration: underline; text-underline-offset: 4px; }
+      p, li { font-size: .94rem; }
+      blockquote { border: 0; padding: 0 2em; text-align: center; }
+      pre { border-radius: 0; background: transparent; }
+      hr { width: 80px; margin-right: auto; margin-left: auto; border-top-style: dashed; }
+    `,
+    swiss: `
+      .document { max-width: 630px; margin: 0 auto; }
+      h1 { margin: 0 0 1.4em; border-top: 8px solid var(--accent); padding-top: 20px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 3.7rem; font-weight: 700; line-height: .96; letter-spacing: -.065em; }
+      h2 { border: 0; padding: 0; font-size: 1.25rem; letter-spacing: .08em; text-transform: uppercase; }
+      h3 { font-size: 1rem; letter-spacing: .04em; }
+      p, li { font-size: .94rem; }
+      blockquote { border-left-width: 8px; font-style: normal; }
+      table { border-top: 3px solid var(--heading); }
+      th { text-transform: uppercase; letter-spacing: .06em; }
+    `,
+    letterpress: `
+      .document { max-width: 640px; margin: 0 auto; }
+      h1 { margin-bottom: .9em; font-family: Georgia, serif; font-size: 3.35rem; font-weight: 500; line-height: 1.06; text-align: center; }
+      h1::after { display: block; width: 28px; margin: 24px auto 0; border-bottom: 5px double var(--accent); content: ''; }
+      h2 { border: 0; padding: 0; font-family: Georgia, serif; font-size: 1.6rem; text-align: center; }
+      h3 { font-family: Georgia, serif; font-variant: small-caps; letter-spacing: .06em; }
+      .document > p:first-of-type::first-letter { float: left; margin: .08em .12em 0 0; color: var(--accent); font-family: Georgia, serif; font-size: 3.8em; line-height: .72; }
+      blockquote { border: 0; text-align: center; }
+      hr { width: 64px; margin-right: auto; margin-left: auto; border-top: 3px double var(--rule); }
+    `,
+    executive: `
+      .document { max-width: 680px; margin: 0 auto; }
+      h1 { margin-bottom: 1.1em; border-bottom: 4px solid var(--accent); padding-bottom: 22px; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 3rem; font-weight: 700; }
+      h2 { border: 0; border-left: 4px solid var(--accent); padding: 2px 0 2px 14px; font-size: 1.45rem; }
+      h3 { color: var(--accent); font-size: 1.05rem; text-transform: uppercase; letter-spacing: .05em; }
+      p, li { font-size: .95rem; }
+      blockquote { border: 0; border-radius: 4px; padding: 1em 1.2em; background: color-mix(in srgb, var(--accent) 8%, transparent); font-style: normal; }
+      th { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+      img, pre { border-radius: 2px; }
+    `,
+    notebook: `
+      .document { max-width: 620px; margin: 0 auto; }
+      h1 { margin-bottom: 1em; font-size: 3rem; font-weight: 650; transform: rotate(-.35deg); }
+      h2 { border: 0; padding: 0 0 8px; background: linear-gradient(transparent 70%, color-mix(in srgb, var(--accent) 24%, transparent) 0); font-size: 1.5rem; }
+      h3 { font-size: 1.08rem; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 3px; text-underline-offset: 5px; }
+      p, li { font-size: .96rem; }
+      blockquote { border-left: 0; border-radius: 3px; padding: 1em 1.2em; background: color-mix(in srgb, var(--accent) 9%, transparent); font-style: normal; }
+      li::marker { color: var(--accent); }
+      pre { border-style: dashed; border-radius: 3px; }
+    `,
   }
-  return `
-    .document { max-width: 675px; margin: 0 auto; counter-reset: section; }
-    h1 { position: relative; margin: 0 auto 2.2em; padding-bottom: 24px; font-family: Georgia, 'Times New Roman', serif; font-size: 2.25rem; font-weight: 700; line-height: 1.22; letter-spacing: 0; text-align: center; }
-    h1::after { position: absolute; right: 38%; bottom: 0; left: 38%; border-bottom: 1px solid var(--heading); content: ''; }
-    h2 { border: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 1.31rem; letter-spacing: 0; counter-increment: section; counter-reset: subsection; }
-    h2::before { content: counter(section) '. '; }
-    h3 { font-size: 1.06rem; letter-spacing: 0; counter-increment: subsection; }
-    h3::before { content: counter(section) '.' counter(subsection) ' '; }
-    p { text-align: justify; hyphens: auto; }
-    p, li { font-size: .94rem; }
-    blockquote { margin-right: 2em; margin-left: 2em; border: 0; padding: 0; color: var(--body); font-size: .92em; font-style: normal; }
-    li::marker { color: var(--heading); }
-    pre { border-radius: 0; background: #f7f7f7; }
-    table { border-top: 2px solid var(--heading); border-bottom: 2px solid var(--heading); }
-    th, td { border: 0; border-bottom: 1px solid var(--rule); }
-    th { border-bottom: 1.5px solid var(--heading); background: transparent; }
-    img { border-radius: 0; }
-  `
-}
-
-export function createWatermarkMarkup(settings: ExportSettings) {
-  const watermark = settings.watermark
-  if (!watermark.enabled || !watermark.text.trim()) return ''
-
-  const text = escapeHtml(watermark.text.trim())
-  if (watermark.position === 'tiled') {
-    return `<div class="watermark-grid" aria-hidden="true">${Array.from(
-      { length: 15 },
-      () => `<span>${text}</span>`,
-    ).join('')}</div>`
-  }
-
-  return `<div class="watermark watermark-${watermark.position}" aria-hidden="true">${text}</div>`
+  return styles[preset]
 }
 
 export function getExportCss(settings: ExportSettings) {
   const style = getExportStyle(settings)
-  const watermark = settings.watermark
   const paper = pageDimensions[settings.paper]
 
   return `
@@ -153,8 +233,8 @@ export function getExportCss(settings: ExportSettings) {
     .task-list-item { display: flex; align-items: baseline; gap: .55em; }
     .task-list-item input { flex: 0 0 auto; accent-color: ${settings.accent}; }
     hr { margin: 2.3em 0; border: 0; border-top: 1px solid ${style.rule}; }
-    code { border-radius: 4px; padding: .14em .35em; background: #f0efea; font: .85em 'SFMono-Regular', Consolas, monospace; }
-    pre { overflow: auto; margin: 1.5em 0; border: 1px solid ${style.rule}; border-radius: 10px; padding: 1.1em 1.25em; background: #f5f4ef; line-height: 1.55; white-space: pre-wrap; }
+    code { border-radius: 4px; padding: .14em .35em; background: color-mix(in srgb, ${style.body} 7%, ${style.background}); font: .85em 'SFMono-Regular', Consolas, monospace; }
+    pre { overflow: auto; margin: 1.5em 0; border: 1px solid ${style.rule}; border-radius: 10px; padding: 1.1em 1.25em; background: color-mix(in srgb, ${style.body} 5%, ${style.background}); line-height: 1.55; white-space: pre-wrap; }
     pre code { padding: 0; background: transparent; font-size: .82rem; }
     table { width: 100%; margin: 1.6em 0; border-spacing: 0; border-collapse: collapse; font-size: .93rem; }
     th, td { padding: .72em .8em; border-bottom: 1px solid ${style.rule}; text-align: left; }
@@ -162,14 +242,6 @@ export function getExportCss(settings: ExportSettings) {
     img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 6px; }
     input[type='checkbox'] { accent-color: ${settings.accent}; }
     ${getPresetCss(settings.preset)}
-    .watermark { position: absolute; z-index: 1; color: ${watermark.color}; opacity: ${watermark.opacity}; font: 700 ${watermark.size}px/1 ${fonts.sans}; letter-spacing: .12em; white-space: nowrap; transform: rotate(${watermark.rotation}deg); pointer-events: none; }
-    .watermark-center { top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(${watermark.rotation}deg); }
-    .watermark-top-left { top: 54px; left: 54px; transform-origin: left top; }
-    .watermark-top-right { top: 54px; right: 54px; transform-origin: right top; }
-    .watermark-bottom-left { bottom: 54px; left: 54px; transform-origin: left bottom; }
-    .watermark-bottom-right { right: 54px; bottom: 54px; transform-origin: right bottom; }
-    .watermark-grid { position: absolute; inset: -10%; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); place-items: center; color: ${watermark.color}; opacity: ${watermark.opacity}; pointer-events: none; transform: rotate(${watermark.rotation}deg) scale(1.12); }
-    .watermark-grid span { font: 700 ${Math.min(watermark.size, 44)}px/1 ${fonts.sans}; letter-spacing: .1em; white-space: nowrap; }
     @page { size: ${paper.css}; margin: 0; }
     @media print {
       html, body { background: ${style.background}; }
@@ -183,7 +255,6 @@ export function createExportHtml(
   title: string,
   renderedMarkdown: string,
   settings: ExportSettings,
-  shouldPrint = false,
 ) {
   const safeTitle = escapeHtml(title || 'Untitled document')
   return `<!doctype html>
@@ -196,10 +267,8 @@ export function createExportHtml(
 </head>
 <body>
   <main class="export-page preset-${settings.preset}">
-    ${createWatermarkMarkup(settings)}
     <article class="document">${renderedMarkdown}</article>
   </main>
-  ${shouldPrint ? '<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),250))</script>' : ''}
 </body>
 </html>`
 }
@@ -209,8 +278,12 @@ export function downloadBlob(content: BlobPart, filename: string, type: string) 
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = filename
+  anchor.rel = 'noopener'
+  anchor.style.display = 'none'
+  document.body.append(anchor)
   anchor.click()
-  setTimeout(() => URL.revokeObjectURL(url), 500)
+  anchor.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 2_000)
 }
 
 export function safeFilename(title: string) {

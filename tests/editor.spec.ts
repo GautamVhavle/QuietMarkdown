@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
@@ -121,6 +122,35 @@ test('opens a local Markdown file', async ({ page }, testInfo) => {
   }
 })
 
+test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'File integrity is covered once on desktop.')
+  await page.getByLabel('Markdown content').fill('# Export proof\n\nA short document for file verification.')
+  await page.getByRole('button', { name: 'Open export studio' }).click()
+
+  const htmlDownloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: /Download HTML/ }).click()
+  const htmlDownload = await htmlDownloadPromise
+  const htmlPath = testInfo.outputPath('quietmarkdown-export.html')
+  await htmlDownload.saveAs(htmlPath)
+  const html = await readFile(htmlPath, 'utf8')
+  expect(htmlDownload.suggestedFilename()).toMatch(/\.html$/)
+  expect(html).toContain('<h1>Export proof</h1>')
+  expect(html).not.toContain('watermark')
+  expect(html).not.toContain('quietmarkdown.vercel.app')
+
+  const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
+  await page.getByRole('button', { name: /Save as PDF/ }).click()
+  const pdfDownload = await pdfDownloadPromise
+  const pdfPath = testInfo.outputPath('quietmarkdown-export.pdf')
+  await pdfDownload.saveAs(pdfPath)
+  const pdfBytes = await readFile(pdfPath)
+  const { PDFDocument } = await import('pdf-lib')
+  const pdf = await PDFDocument.load(pdfBytes)
+  expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/)
+  expect(pdfBytes.subarray(0, 4).toString()).toBe('%PDF')
+  expect(pdf.getPageCount()).toBeGreaterThan(0)
+})
+
 test('switches theme and customizes export watermark', async ({ page }) => {
   await page.getByLabel('Use dark theme').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
@@ -133,12 +163,15 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.getByLabel('Typeface')).toHaveValue('sans')
   await expect(page.locator('.export-page-live').first()).toHaveClass(/export-preset-minimal/)
   await page.getByRole('button', { name: 'Academic' }).click()
-  await expect(page.getByLabel('Typeface')).toHaveValue('serif')
+  await expect(page.getByLabel('Typeface')).toHaveValue('classic')
   await expect(page.locator('.export-page-live').first()).toHaveClass(/export-preset-academic/)
+  await expect(page.locator('.preset-card')).toHaveCount(8)
+  await expect(page.getByLabel('Page background color')).toHaveValue('#ffffff')
 
   const watermark = page.getByPlaceholder('DRAFT, CONFIDENTIAL…')
+  await expect(watermark).toHaveValue('quietmarkdown.vercel.app')
   await watermark.fill('CONFIDENTIAL')
   await page.getByRole('button', { name: 'Tiled' }).click()
   await expect(page.getByRole('dialog').getByText('CONFIDENTIAL').first()).toBeVisible()
-  await expect(page.getByRole('button', { name: /PDF/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Save as PDF/ })).toBeVisible()
 })

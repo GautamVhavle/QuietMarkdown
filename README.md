@@ -38,8 +38,8 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 - **Private by design.** No account, backend, database, analytics, or document upload.
 - **Fast where it matters.** Write in Markdown and see a refined preview immediately.
 - **Files you own.** Open, drag and drop, and download normal `.md` files.
-- **Export with confidence.** Create styled HTML, print-ready PDF, and true 2x PNG pages.
-- **Built for presentation.** Tune typography, paper, accent color, margins, and watermarks in one focused studio.
+- **Export with confidence.** Directly download styled HTML, multipage PDF, and true 2x PNG pages.
+- **Built for presentation.** Tune typography, paper, page color, accent, margins, and per-page watermarks in one focused studio.
 
 ## Features
 
@@ -63,17 +63,22 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 
 | Export | What you get |
 | --- | --- |
-| **PDF** | Browser-native print flow for crisp, selectable text and reliable multipage output |
-| **HTML** | A portable standalone document with its selected export styling |
+| **PDF** | A direct multipage PDF download that matches the page preview |
+| **HTML** | A portable standalone document with selected styling and no watermark |
 | **PNG pages** | True 2x page images. Multi-page documents download as one ZIP containing numbered PNG files |
 
-Choose one of three structurally distinct document systems:
+Choose from eight structurally distinct document systems:
 
 - **Editorial** for warm, expressive essays and features
 - **Minimal** for quiet, restrained working documents
 - **Academic** for formal papers with numbered sections and booktabs-inspired tables
+- **Manuscript** for typewriter-like drafts
+- **Swiss** for graphic modernist hierarchy
+- **Letterpress** for classic crafted documents
+- **Executive** for sharp professional reports
+- **Notebook** for personal, approachable notes
 
-Watermarks are part of the export experience, not an afterthought. Control text, placement, tile mode, opacity, size, rotation, and color while previewing the final result.
+Watermarks are part of the PDF and PNG experience, not an afterthought. Control text, placement, tile mode, opacity, size, rotation, and color while previewing the final result. HTML and Markdown downloads remain clean.
 
 ## Quick start
 
@@ -117,7 +122,7 @@ src/
 ├── App.tsx             # Editor, toolbar, views, local persistence, Export Studio
 ├── lib/
 │   ├── markdown.ts     # Sanitized Markdown and syntax highlighting policy
-│   └── export.ts       # HTML, print/PDF, styling, and download utilities
+│   └── export.ts       # Portable HTML, styling, and download utilities
 ├── styles.css          # Design tokens, responsive UI, editor, export presets
 └── types.ts            # Export, watermark, theme, and view types
 
@@ -143,7 +148,7 @@ A few practical notes:
 
 - Clear site data can remove an autosaved draft, so download the `.md` file when you need a durable backup.
 - Remote image URLs can contact their host and can be blocked by browser CORS rules during PNG export. Prefer local images for dependable private exports.
-- PDF uses the browser print flow. Choose **Save as PDF** in the print dialog for a high-quality document.
+- PDF and PNG pages are rendered locally at fixed page dimensions. Large image-heavy documents can require additional browser memory while they are being generated.
 
 ## Deployment
 
