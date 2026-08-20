@@ -42,6 +42,7 @@ import {
   type RefObject,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from 'react'
@@ -52,6 +53,7 @@ import {
   pageDimensions,
   safeFilename,
 } from './lib/export'
+import { computePageBoundaries } from './lib/pagination'
 import { countDocument, renderMarkdown } from './lib/markdown'
 import {
   defaultExportSettings,
@@ -177,6 +179,73 @@ type FormatAction =
   | 'table'
   | 'image'
   | 'divider'
+
+interface EditorState {
+  markdown: string
+  history: string[]
+  historyIndex: number
+}
+
+type EditorAction =
+  | { type: 'UPDATE'; markdown: string }
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'RESET'; markdown: string }
+
+const MAX_HISTORY = 100
+
+function editorReducer(state: EditorState, action: EditorAction): EditorState {
+  switch (action.type) {
+    case 'UPDATE': {
+      const current = state.markdown
+      if (action.markdown === current) return state
+      const newHistory = state.history.slice(0, state.historyIndex + 1)
+      newHistory.push(current)
+      if (newHistory.length > MAX_HISTORY) newHistory.shift()
+      return {
+        markdown: action.markdown,
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      }
+    }
+    case 'UNDO': {
+      if (state.historyIndex < 0) return state
+      const newIndex = state.historyIndex - 1
+      if (newIndex < 0) return state
+      return {
+        ...state,
+        markdown: state.history[newIndex],
+        historyIndex: newIndex,
+      }
+    }
+    case 'REDO': {
+      const newIndex = state.historyIndex + 1
+      if (newIndex >= state.history.length - 1) {
+        // Reached the last known state — the markdown itself is the tip
+        if (newIndex >= state.history.length) return state
+        return {
+          ...state,
+          markdown: state.history[newIndex],
+          historyIndex: newIndex,
+        }
+      }
+      return {
+        ...state,
+        markdown: state.history[newIndex],
+        historyIndex: newIndex,
+      }
+    }
+    case 'RESET': {
+      return {
+        markdown: action.markdown,
+        history: [action.markdown],
+        historyIndex: 0,
+      }
+    }
+    default:
+      return state
+  }
+}
 
 const loadDocument = () => {
   try {
@@ -544,8 +613,9 @@ function ExportStudio({
     const images = Array.from(captureRef.current.querySelectorAll('img'))
     await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
 
-    const captureHeight = Math.max(dimensions.height, captureRef.current.scrollHeight)
-    const pageCount = Math.ceil(captureHeight / dimensions.height)
+    // Compute smart page boundaries that respect element boundaries
+    const boundaries = computePageBoundaries(captureRef.current, settings)
+    const pageCount = boundaries.length
     const pixelRatio = 2
     const { toCanvas } = await import('html-to-image')
     const viewport = document.createElement('div')
@@ -557,15 +627,20 @@ function ExportStudio({
     pageSource.style.position = 'absolute'
     pageSource.style.top = '0'
     pageSource.style.left = '0'
-    pageSource.style.height = `${captureHeight}px`
-    pageSource.style.minHeight = `${captureHeight}px`
+    // Set height to cover all pages
+    const totalHeight = pageCount * dimensions.height
+    pageSource.style.height = `${totalHeight}px`
+    pageSource.style.minHeight = `${totalHeight}px`
     pageSource.style.transformOrigin = 'top left'
     viewport.append(pageSource)
     document.body.append(viewport)
 
     try {
       for (let index = 0; index < pageCount; index += 1) {
-        pageSource.style.transform = `translateY(-${index * dimensions.height}px)`
+        const boundary = boundaries[index]
+        // Translate so the page's content area aligns with viewport top
+        // boundary.top is the page start in the full document (including margin)
+        pageSource.style.transform = `translateY(-${boundary.top}px)`
         const canvas = await toCanvas(viewport, {
           cacheBust: true,
           pixelRatio,
@@ -850,7 +925,11 @@ function ExportStudio({
 function App() {
   const [initialDocument] = useState(loadDocument)
   const [title, setTitle] = useState(initialDocument.title)
-  const [markdown, setMarkdown] = useState(initialDocument.markdown)
+  const [editor, setEditor] = useReducer(
+    editorReducer,
+    { markdown: initialDocument.markdown, history: [initialDocument.markdown], historyIndex: 0 },
+  )
+  const markdown = editor.markdown
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     window.matchMedia('(max-width: 900px)').matches ? 'write' : 'split',
@@ -861,8 +940,6 @@ function App() {
   const [lastSavedDocument, setLastSavedDocument] = useState(() => JSON.stringify(initialDocument))
   const [dragging, setDragging] = useState(false)
   const [toast, setToast] = useState('')
-  const [history, setHistory] = useState<string[]>([initialDocument.markdown])
-  const [historyIndex, setHistoryIndex] = useState(0)
   const [isMac, setIsMac] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const editorRef = useRef<HTMLTextAreaElement>(null)
@@ -916,17 +993,6 @@ function App() {
     return () => window.removeEventListener('resize', checkPlatform)
   }, [])
 
-  // Update history when markdown changes (but not from undo/redo)
-  const lastHistoryEntry = history[historyIndex]
-  useEffect(() => {
-    if (markdown !== lastHistoryEntry) {
-      const newHistory = history.slice(0, historyIndex + 1)
-      newHistory.push(markdown)
-      setHistory(newHistory)
-      setHistoryIndex(newHistory.length - 1)
-    }
-  }, [markdown, historyIndex, history])
-
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
     const sourceRange = source.scrollHeight - source.clientHeight
     const targetRange = target.scrollHeight - target.clientHeight
@@ -953,7 +1019,7 @@ function App() {
   }
 
   const setEditorValue = (next: string, selectionStart: number, selectionEnd: number) => {
-    setMarkdown(next)
+    setEditor({ type: 'UPDATE', markdown: next })
     requestAnimationFrame(() => {
       editorRef.current?.focus()
       editorRef.current?.setSelectionRange(selectionStart, selectionEnd)
@@ -1039,7 +1105,7 @@ function App() {
       return
     }
     const content = await file.text()
-    setMarkdown(content)
+    setEditor({ type: 'RESET', markdown: content })
     setTitle(file.name.replace(/\.(md|markdown|mdown|txt)$/i, '') || 'Untitled')
     setToast(`${file.name} opened`)
   }
@@ -1082,29 +1148,25 @@ function App() {
   }
 
   const undo = () => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1
-      setHistoryIndex(newIndex)
-      setMarkdown(history[newIndex])
+    if (editor.historyIndex > 0) {
+      setEditor({ type: 'UNDO' })
       editorRef.current?.focus()
     }
   }
 
   const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1
-      setHistoryIndex(newIndex)
-      setMarkdown(history[newIndex])
+    if (editor.historyIndex < editor.history.length - 1) {
+      setEditor({ type: 'REDO' })
       editorRef.current?.focus()
     }
   }
 
-  const canUndo = historyIndex > 0
-  const canRedo = historyIndex < history.length - 1
+  const canUndo = editor.historyIndex > 0
+  const canRedo = editor.historyIndex < editor.history.length - 1
 
   const toolbarItems = [
-    { action: 'undo' as const, icon: ArrowLeft, label: 'Undo', shortcut: isMac ? '⌘Z' : 'Ctrl+Z', group: 'history', disabled: !canUndo, onClick: undo },
-    { action: 'redo' as const, icon: ArrowRight, label: 'Redo', shortcut: isMac ? '⌘⇧Z' : 'Ctrl+Y', group: 'history', disabled: !canRedo, onClick: redo },
+    { action: 'undo' as const, icon: ArrowLeft, label: 'Undo', shortcut: isMac ? '⌘Z' : 'Ctrl+Z', group: 'history', disabled: !canUndo },
+    { action: 'redo' as const, icon: ArrowRight, label: 'Redo', shortcut: isMac ? '⌘⇧Z' : 'Ctrl+Y', group: 'history', disabled: !canRedo },
     { action: 'heading1' as const, icon: Heading1, label: 'Title', shortcut: '', group: 'headings' },
     { action: 'heading2' as const, icon: Heading2, label: 'Section heading', shortcut: '', group: 'headings' },
     { action: 'heading3' as const, icon: Heading3, label: 'Small heading', shortcut: '', group: 'headings' },
@@ -1121,6 +1183,12 @@ function App() {
     { action: 'task' as const, icon: ListChecks, label: 'Task list', shortcut: '', group: 'blocks' },
     { action: 'divider' as const, icon: Minus, label: 'Divider', shortcut: '', group: 'blocks' },
   ]
+
+  const handleToolbarAction = (action: string) => {
+    if (action === 'undo') return undo()
+    if (action === 'redo') return redo()
+    applyFormat(action as FormatAction)
+  }
 
   return (
     <div
@@ -1196,12 +1264,12 @@ function App() {
 
         <div className="format-toolbar" aria-label="Markdown tools">
           <span className="toolbar-label">Tools</span>
-          {toolbarItems.map(({ action, icon: Icon, label, shortcut, group, disabled, onClick }, index) => (
+          {toolbarItems.map(({ action, icon: Icon, label, shortcut, group, disabled }, index) => (
             <span className="toolbar-item-wrap" key={action}>
               {index > 0 && group !== toolbarItems[index - 1].group && <span className="toolbar-divider" />}
               <button
                 className={`format-button ${disabled ? 'disabled' : ''}`}
-                onClick={onClick ?? (() => applyFormat(action))}
+                onClick={() => handleToolbarAction(action)}
                 aria-label={label}
                 aria-disabled={disabled}
                 title={`${label}${shortcut ? ` (${shortcut})` : ''}`}
@@ -1237,7 +1305,7 @@ function App() {
             <textarea
               ref={editorRef}
               value={markdown}
-              onChange={(event) => setMarkdown(event.target.value)}
+              onChange={(event) => setEditor({ type: 'UPDATE', markdown: event.target.value })}
               onScroll={handleEditorScroll}
               onKeyDown={handleEditorKeyDown}
               spellCheck="true"
