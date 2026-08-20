@@ -54,7 +54,7 @@ import {
   safeFilename,
 } from './lib/export'
 import { computePageBoundaries } from './lib/pagination'
-import { countDocument, renderMarkdown } from './lib/markdown'
+import { countDocument, renderMarkdown, initMermaid } from './lib/markdown'
 import {
   defaultExportSettings,
   type ExportSettings,
@@ -135,6 +135,38 @@ const draft: Draft = {
 \`\`\`
 
 > A blockquote is useful for a guiding principle, a source excerpt, or a short pull quote that deserves a pause.
+
+---
+
+## 5.5. Visualize with Mermaid
+
+QuietMarkdown renders Mermaid diagrams live in the preview. Paste any Mermaid diagram in a fenced code block and it becomes an interactive SVG.
+
+\`\`\`mermaid
+flowchart TD
+    A[Start: Define Outcome] --> B{Is scope clear?}
+    B -->|No| C[Refine brief & gather evidence]
+    C --> B
+    B -->|Yes| D[Draft structure: headings & sections]
+    D --> E[Write first pass]
+    E --> F{Review with audience}
+    F -->|Needs work| G[Revise & restructure]
+    G --> F
+    F -->|Clear| H[Polish: typography, code, tables, images]
+    H --> I[Choose export preset & watermark]
+    I --> J[Download PDF / HTML / PNG]
+    J --> K[Share with confidence]
+    style A fill:#fef3c7,stroke:#d97706,stroke-width:2px
+    style K fill:#d1fae5,stroke:#059669,stroke-width:2px
+    style C fill:#fee2e2,stroke:#dc2626
+    style G fill:#fee2e2,stroke:#dc2626
+    style D fill:#e0e7ff,stroke:#4f46e5
+    style E fill:#e0e7ff,stroke:#4f46e5
+    style H fill:#e0e7ff,stroke:#4f46e5
+    style I fill:#fce7f3,stroke:#db2777
+\`\`\`
+
+*Diagrams render in real-time as you type. They export cleanly to PDF, HTML, and PNG.*
 
 ---
 
@@ -992,6 +1024,12 @@ function App() {
     window.addEventListener('resize', checkPlatform)
     return () => window.removeEventListener('resize', checkPlatform)
   }, [])
+
+  // Initialize mermaid diagrams in preview when rendered content changes
+  useEffect(() => {
+    if (!previewScrollRef.current) return
+    initMermaid(previewScrollRef.current)
+  }, [rendered])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
     const sourceRange = source.scrollHeight - source.clientHeight

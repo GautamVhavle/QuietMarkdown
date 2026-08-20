@@ -51,6 +51,19 @@ const markdown = new MarkdownIt({
   },
 })
 
+// Custom fence renderer for mermaid diagrams
+const defaultFence = markdown.renderer.rules.fence ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
+markdown.renderer.rules.fence = (tokens, idx, options, _env, self) => {
+  const token = tokens[idx]
+  const info = token.info ? token.info.trim() : ''
+  if (info === 'mermaid') {
+    const code = token.content.trim()
+    // Use a data attribute to store the mermaid code, will be rendered client-side
+    return `<div class="mermaid" data-mermaid="${escapeHtml(code)}"></div>`
+  }
+  return defaultFence(tokens, idx, options, _env, self)
+}
+
 markdown.use(taskLists, { enabled: false, label: true })
 
 const defaultLinkOpen =
@@ -67,8 +80,36 @@ markdown.renderer.rules.link_open = (tokens, index, options, env, self) => {
 export function renderMarkdown(source: string): string {
   return DOMPurify.sanitize(markdown.render(source), {
     USE_PROFILES: { html: true },
-    ADD_ATTR: ['target'],
+    ADD_ATTR: ['target', 'data-mermaid'],
+    ADD_TAGS: ['div'],
   })
+}
+
+/**
+ * Initialize mermaid diagrams in the given container.
+ * Call this after the preview content has been updated.
+ */
+export async function initMermaid(container: HTMLElement): Promise<void> {
+  try {
+    const mermaid = await import('mermaid')
+    mermaid.default.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      securityLevel: 'loose',
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    })
+    const elements = container.querySelectorAll('.mermaid[data-mermaid]')
+    for (const el of elements) {
+      const code = el.getAttribute('data-mermaid')
+      if (code) {
+        el.textContent = code
+        el.removeAttribute('data-mermaid')
+      }
+    }
+    await mermaid.default.run({ nodes: Array.from(container.querySelectorAll('.mermaid')) })
+  } catch {
+    // Mermaid failed to load or render, silently ignore
+  }
 }
 
 export function countDocument(source: string) {
