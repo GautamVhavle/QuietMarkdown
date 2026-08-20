@@ -301,10 +301,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .section-heading > div > span { display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid var(--line); border-radius: 7px; color: var(--ink-faint); font-family: 'DM Mono', monospace; font-size: 8px; }
 .section-heading h3 { margin: 0; font-size: 12px; font-weight: 700; }
 .section-heading p { margin: 0; color: var(--ink-faint); font-size: 9px; }
-.preset-row { display: flex; gap: 8px; overflow-x: auto; padding: 1px 1px 7px; scroll-padding-inline: 1px; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.preset-row::-webkit-scrollbar { height: 4px; }
-.preset-row::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--line); }
-.preset-card { position: relative; display: flex; min-width: 132px; flex: 0 0 132px; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-solid); color: var(--ink-soft); font-size: 10px; font-weight: 600; text-align: left; text-transform: capitalize; scroll-snap-align: start; cursor: pointer; transition: border .15s ease, background .15s ease, transform .15s ease; }
+.preset-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 1px 1px 7px; }
+.preset-card { position: relative; display: flex; flex: 1 1 calc(33.333% - 6px); min-width: 120px; max-width: calc(33.333% - 6px); align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-solid); color: var(--ink-soft); font-size: 10px; font-weight: 600; text-align: left; text-transform: capitalize; cursor: pointer; transition: border .15s ease, background .15s ease, transform .15s ease; }
 .preset-card > svg { position: absolute; top: 7px; right: 7px; color: var(--accent); }
 .preset-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .preset-copy strong { color: var(--ink); font-size: 9px; font-weight: 700; text-transform: capitalize; }
