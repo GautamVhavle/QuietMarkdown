@@ -164,6 +164,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .toolbar-divider { width: 1px; height: 18px; margin: 0 5px; background: var(--line); }
 .format-button { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 6px; color: var(--ink-soft); }
 .format-button:hover { color: var(--accent-ink); }
+.format-button.disabled { opacity: 0.35; pointer-events: none; color: var(--ink-faint); }
 .document-stats { justify-content: flex-end; gap: 7px; color: var(--ink-faint); font-size: 10px; }
 .document-stats > i { width: 2px; height: 2px; border-radius: 50%; background: var(--ink-faint); }
 

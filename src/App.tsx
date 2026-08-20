@@ -1,4 +1,6 @@
 import {
+  ArrowLeft,
+  ArrowRight,
   Bold,
   Check,
   Code2,
@@ -859,6 +861,10 @@ function App() {
   const [lastSavedDocument, setLastSavedDocument] = useState(() => JSON.stringify(initialDocument))
   const [dragging, setDragging] = useState(false)
   const [toast, setToast] = useState('')
+  const [history, setHistory] = useState<string[]>([initialDocument.markdown])
+  const [historyIndex, setHistoryIndex] = useState(0)
+  const [isMac, setIsMac] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const scrollSyncOriginRef = useRef<'editor' | 'preview' | null>(null)
@@ -894,6 +900,32 @@ function App() {
     const timer = window.setTimeout(() => setToast(''), 2600)
     return () => window.clearTimeout(timer)
   }, [toast])
+
+  // Detect platform (Mac vs Windows) and mobile
+  useEffect(() => {
+    const checkPlatform = () => {
+      const userAgent = navigator.userAgent.toLowerCase()
+      const platform = navigator.platform.toLowerCase()
+      const mac = platform.includes('mac') || userAgent.includes('macintosh')
+      const mobile = window.innerWidth < 768 || /android|iphone|ipad|ipod/i.test(userAgent)
+      setIsMac(mac)
+      setIsMobile(mobile)
+    }
+    checkPlatform()
+    window.addEventListener('resize', checkPlatform)
+    return () => window.removeEventListener('resize', checkPlatform)
+  }, [])
+
+  // Update history when markdown changes (but not from undo/redo)
+  const lastHistoryEntry = history[historyIndex]
+  useEffect(() => {
+    if (markdown !== lastHistoryEntry) {
+      const newHistory = history.slice(0, historyIndex + 1)
+      newHistory.push(markdown)
+      setHistory(newHistory)
+      setHistoryIndex(newHistory.length - 1)
+    }
+  }, [markdown, historyIndex, history])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
     const sourceRange = source.scrollHeight - source.clientHeight
@@ -1037,7 +1069,9 @@ function App() {
     if (!modifier) return
 
     const key = event.key.toLowerCase()
-    if (key === 'b') { event.preventDefault(); applyFormat('bold') }
+    if (key === 'z' && !event.shiftKey) { event.preventDefault(); undo() }
+    else if ((key === 'z' && event.shiftKey) || key === 'y') { event.preventDefault(); redo() }
+    else if (key === 'b') { event.preventDefault(); applyFormat('bold') }
     else if (key === 'i') { event.preventDefault(); applyFormat('italic') }
     else if (key === 'k') { event.preventDefault(); applyFormat('link') }
     else if (key === 'e' && !event.shiftKey) { event.preventDefault(); applyFormat('code') }
@@ -1047,16 +1081,39 @@ function App() {
     else if (key === '/' && event.shiftKey) { event.preventDefault(); setShortcutsOpen(true) }
   }
 
+  const undo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1
+      setHistoryIndex(newIndex)
+      setMarkdown(history[newIndex])
+      editorRef.current?.focus()
+    }
+  }
+
+  const redo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1
+      setHistoryIndex(newIndex)
+      setMarkdown(history[newIndex])
+      editorRef.current?.focus()
+    }
+  }
+
+  const canUndo = historyIndex > 0
+  const canRedo = historyIndex < history.length - 1
+
   const toolbarItems = [
+    { action: 'undo' as const, icon: ArrowLeft, label: 'Undo', shortcut: isMac ? '⌘Z' : 'Ctrl+Z', group: 'history', disabled: !canUndo, onClick: undo },
+    { action: 'redo' as const, icon: ArrowRight, label: 'Redo', shortcut: isMac ? '⌘⇧Z' : 'Ctrl+Y', group: 'history', disabled: !canRedo, onClick: redo },
     { action: 'heading1' as const, icon: Heading1, label: 'Title', shortcut: '', group: 'headings' },
     { action: 'heading2' as const, icon: Heading2, label: 'Section heading', shortcut: '', group: 'headings' },
     { action: 'heading3' as const, icon: Heading3, label: 'Small heading', shortcut: '', group: 'headings' },
-    { action: 'bold' as const, icon: Bold, label: 'Bold', shortcut: '⌘B', group: 'inline' },
-    { action: 'italic' as const, icon: Italic, label: 'Italic', shortcut: '⌘I', group: 'inline' },
+    { action: 'bold' as const, icon: Bold, label: 'Bold', shortcut: isMac ? '⌘B' : 'Ctrl+B', group: 'inline' },
+    { action: 'italic' as const, icon: Italic, label: 'Italic', shortcut: isMac ? '⌘I' : 'Ctrl+I', group: 'inline' },
     { action: 'strike' as const, icon: Strikethrough, label: 'Strikethrough', shortcut: '', group: 'inline' },
-    { action: 'link' as const, icon: Link2, label: 'Link', shortcut: '⌘K', group: 'insert' },
+    { action: 'link' as const, icon: Link2, label: 'Link', shortcut: isMac ? '⌘K' : 'Ctrl+K', group: 'insert' },
     { action: 'image' as const, icon: ImagePlus, label: 'Image', shortcut: '', group: 'insert' },
-    { action: 'code' as const, icon: Code2, label: 'Code', shortcut: '⌘E', group: 'insert' },
+    { action: 'code' as const, icon: Code2, label: 'Code', shortcut: isMac ? '⌘E' : 'Ctrl+E', group: 'insert' },
     { action: 'table' as const, icon: Table2, label: 'Table', shortcut: '', group: 'blocks' },
     { action: 'quote' as const, icon: Quote, label: 'Quote', shortcut: '', group: 'blocks' },
     { action: 'bullet' as const, icon: List, label: 'Bullet list', shortcut: '', group: 'blocks' },
@@ -1098,10 +1155,10 @@ function App() {
         </nav>
 
         <div className="header-actions">
-          <button className="quiet-button" onClick={() => fileInputRef.current?.click()} title="Open file (⌘O)">
+          <button className="quiet-button" onClick={() => fileInputRef.current?.click()} title={`Open file (${isMac ? '⌘O' : 'Ctrl+O'})`}>
             <FolderOpen size={16} /><span>Open</span>
           </button>
-          <button className="quiet-button" onClick={downloadMarkdown} title="Download Markdown (⌘⇧S)">
+          <button className="quiet-button" onClick={downloadMarkdown} title={`Download Markdown (${isMac ? '⌘⇧S' : 'Ctrl+Shift+S'})`}>
             <Download size={16} /><span>Save .md</span>
           </button>
           <span className="header-divider" />
@@ -1139,14 +1196,16 @@ function App() {
 
         <div className="format-toolbar" aria-label="Markdown tools">
           <span className="toolbar-label">Tools</span>
-          {toolbarItems.map(({ action, icon: Icon, label, shortcut, group }, index) => (
+          {toolbarItems.map(({ action, icon: Icon, label, shortcut, group, disabled, onClick }, index) => (
             <span className="toolbar-item-wrap" key={action}>
               {index > 0 && group !== toolbarItems[index - 1].group && <span className="toolbar-divider" />}
               <button
-                className="format-button"
-                onClick={() => applyFormat(action)}
+                className={`format-button ${disabled ? 'disabled' : ''}`}
+                onClick={onClick ?? (() => applyFormat(action))}
                 aria-label={label}
+                aria-disabled={disabled}
                 title={`${label}${shortcut ? ` (${shortcut})` : ''}`}
+                disabled={disabled}
               >
                 <Icon size={15} />
               </button>
@@ -1258,19 +1317,20 @@ function App() {
         </div>
       )}
 
-      {shortcutsOpen && (
+      {shortcutsOpen && !isMobile && (
         <div className="shortcuts-popover">
           <div><strong>Keyboard shortcuts</strong><button onClick={() => setShortcutsOpen(false)}><X size={14} /></button></div>
           <dl>
-            <dt>Bold</dt><dd>⌘ B</dd>
-            <dt>Italic</dt><dd>⌘ I</dd>
-            <dt>Link</dt><dd>⌘ K</dd>
-            <dt>Inline code</dt><dd>⌘ E</dd>
-            <dt>Open file</dt><dd>⌘ O</dd>
-            <dt>Save Markdown</dt><dd>⌘ ⇧ S</dd>
-            <dt>Export studio</dt><dd>⌘ ⇧ E</dd>
+            <dt>Undo</dt><dd>{isMac ? '⌘ Z' : 'Ctrl+Z'}</dd>
+            <dt>Redo</dt><dd>{isMac ? '⌘ ⇧ Z' : 'Ctrl+Y'}</dd>
+            <dt>Bold</dt><dd>{isMac ? '⌘ B' : 'Ctrl+B'}</dd>
+            <dt>Italic</dt><dd>{isMac ? '⌘ I' : 'Ctrl+I'}</dd>
+            <dt>Link</dt><dd>{isMac ? '⌘ K' : 'Ctrl+K'}</dd>
+            <dt>Inline code</dt><dd>{isMac ? '⌘ E' : 'Ctrl+E'}</dd>
+            <dt>Open file</dt><dd>{isMac ? '⌘ O' : 'Ctrl+O'}</dd>
+            <dt>Save Markdown</dt><dd>{isMac ? '⌘ ⇧ S' : 'Ctrl+Shift+S'}</dd>
+            <dt>Export studio</dt><dd>{isMac ? '⌘ ⇧ E' : 'Ctrl+Shift+E'}</dd>
           </dl>
-          <p>Use Ctrl instead of ⌘ on Windows.</p>
         </div>
       )}
 
