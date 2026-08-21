@@ -157,14 +157,19 @@ flowchart TD
     I --> J[Download PDF / HTML / PNG]
     J --> K[Share with confidence]
 
-    style A fill:#fef3c7,stroke:#d97706,stroke-width:2px
-    style K fill:#d1fae5,stroke:#059669,stroke-width:2px
-    style C fill:#fee2e2,stroke:#dc2626
-    style G fill:#fee2e2,stroke:#dc2626
-    style D fill:#e0e7ff,stroke:#4f46e5
-    style E fill:#e0e7ff,stroke:#4f46e5
-    style H fill:#e0e7ff,stroke:#4f46e5
-    style I fill:#fce7f3,stroke:#db2777
+    style A fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#1f2937
+    style B fill:#ffffff,stroke:#6b7280,stroke-width:2px,color:#1f2937
+    style C fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#1f2937
+    style D fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1f2937
+    style E fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1f2937
+    style F fill:#ffffff,stroke:#6b7280,stroke-width:2px,color:#1f2937
+    style G fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#1f2937
+    style H fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1f2937
+    style I fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#1f2937
+    style J fill:#ffffff,stroke:#6b7280,stroke-width:2px,color:#1f2937
+    style K fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#1f2937
+
+    linkStyle default stroke:#808080,stroke-width:2px
 
 \`\`\`
 
@@ -289,8 +294,11 @@ const loadDocument = () => {
     const stored = currentStored ?? localStorage.getItem(LEGACY_DOCUMENT_KEY)
     if (stored) {
       const parsed = JSON.parse(stored) as { title: string; markdown: string }
+      const hasCurrentStarterDiagram = parsed.markdown.includes(
+        'linkStyle default stroke:#808080,stroke-width:2px',
+      )
       const isOldStarter = parsed.title === 'QuietMarkdown editor field guide'
-        && !parsed.markdown.includes('J --> K[Share with confidence]')
+        && !hasCurrentStarterDiagram
       if (!isOldStarter) return parsed
     }
   } catch {
@@ -1071,10 +1079,10 @@ function App() {
   useEffect(() => {
     if (!previewScrollRef.current) return
     const frame = requestAnimationFrame(() => {
-      if (previewScrollRef.current) void initMermaid(previewScrollRef.current)
+      if (previewScrollRef.current) void initMermaid(previewScrollRef.current, theme)
     })
     return () => cancelAnimationFrame(frame)
-  }, [rendered, viewMode])
+  }, [rendered, theme, viewMode])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
     const sourceRange = source.scrollHeight - source.clientHeight

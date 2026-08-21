@@ -35,6 +35,7 @@ const escapeHtml = (value: string) =>
     .replaceAll("'", '&#039;')
 
 let mermaidRenderCounter = 0
+const mermaidRenderRequests = new WeakMap<HTMLElement, number>()
 
 const markdown = new MarkdownIt({
   html: false,
@@ -92,12 +93,15 @@ export function renderMarkdown(source: string): string {
  * Initialize mermaid diagrams in the given container.
  * Call this after the preview content has been updated.
  */
-export async function initMermaid(container: HTMLElement): Promise<void> {
+export async function initMermaid(container: HTMLElement, theme: 'light' | 'dark' = 'light'): Promise<void> {
+  const requestId = (mermaidRenderRequests.get(container) ?? 0) + 1
+  mermaidRenderRequests.set(container, requestId)
+
   try {
     const mermaid = await import('mermaid')
     mermaid.default.initialize({
       startOnLoad: false,
-      theme: 'base',
+      theme: theme === 'dark' ? 'dark' : 'base',
       securityLevel: 'loose',
       fontFamily: 'ui-sans-serif, system-ui, sans-serif',
     })
@@ -110,23 +114,30 @@ export async function initMermaid(container: HTMLElement): Promise<void> {
         const code = decodeURIComponent(encoded)
         const id = `quietmarkdown-mermaid-${++mermaidRenderCounter}-${index}`
         const { svg, bindFunctions } = await mermaid.default.render(id, code)
-        if (!element.isConnected) continue
+        // A newer edit or theme change may have started another render while
+        // Mermaid was working. Never let this older result overwrite it.
+        if (
+          mermaidRenderRequests.get(container) !== requestId
+          || !element.isConnected
+          || element.getAttribute('data-mermaid') !== encoded
+        ) continue
         element.innerHTML = svg
-        element.removeAttribute('data-mermaid')
+        // Keep the source on the node so a theme change can render the same
+        // diagram again without rebuilding the whole Markdown document.
+        element.classList.remove('mermaid-error')
         bindFunctions?.(element)
       } catch {
         // Keep a visible fallback instead of leaving an empty diagram box.
         element.classList.add('mermaid-error')
         element.textContent = 'Unable to render this Mermaid diagram.'
-        element.removeAttribute('data-mermaid')
       }
     }
   } catch {
     // Keep the preview understandable if the optional Mermaid chunk fails to load.
+    if (mermaidRenderRequests.get(container) !== requestId) return
     for (const element of Array.from(container.querySelectorAll<HTMLElement>('.mermaid[data-mermaid]'))) {
       element.classList.add('mermaid-error')
       element.textContent = 'Mermaid diagram unavailable. The source remains in the Markdown editor.'
-      element.removeAttribute('data-mermaid')
     }
   }
 }

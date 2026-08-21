@@ -153,8 +153,16 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
 })
 
 test('switches theme and customizes export watermark', async ({ page }) => {
+  const diagram = page.locator('.markdown-body .mermaid svg')
+  await expect(diagram).toHaveCount(1)
+
   await page.getByLabel('Use dark theme').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(diagram).toHaveCount(1)
+
+  await page.getByLabel('Use light theme').click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(diagram).toHaveCount(1)
 
   await page.getByRole('button', { name: 'Export' }).first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -175,4 +183,16 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await page.getByRole('button', { name: 'Tiled' }).click()
   await expect(page.getByRole('dialog').getByText('CONFIDENTIAL').first()).toBeVisible()
   await expect(page.getByRole('button', { name: /Save as PDF/ })).toBeVisible()
+})
+
+test('updates Mermaid diagrams when their source changes', async ({ page }) => {
+  const editor = page.getByLabel('Markdown content')
+  const diagram = page.locator('.markdown-body .mermaid')
+  await expect(diagram.locator('svg')).toHaveCount(1)
+
+  const source = await editor.inputValue()
+  await editor.fill(source.replace('Share with confidence', 'Share with clarity'))
+
+  await expect(diagram.locator('svg')).toHaveCount(1)
+  await expect(diagram.locator('svg')).toContainText('Share with clarity')
 })
