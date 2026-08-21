@@ -34,6 +34,8 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
 
+let mermaidRenderCounter = 0
+
 const markdown = new MarkdownIt({
   html: false,
   linkify: true,
@@ -58,8 +60,9 @@ markdown.renderer.rules.fence = (tokens, idx, options, _env, self) => {
   const info = token.info ? token.info.trim() : ''
   if (info === 'mermaid') {
     const code = token.content.trim()
-    // Use a data attribute to store the mermaid code, will be rendered client-side
-    return `<div class="mermaid" data-mermaid="${escapeHtml(code)}"></div>`
+    // Encode the source so quotes/newlines cannot interfere with the HTML
+    // attribute. It is decoded immediately before Mermaid renders the node.
+    return `<div class="mermaid" data-mermaid="${encodeURIComponent(code)}"></div>`
   }
   return defaultFence(tokens, idx, options, _env, self)
 }
@@ -98,17 +101,28 @@ export async function initMermaid(container: HTMLElement): Promise<void> {
       securityLevel: 'loose',
       fontFamily: 'ui-sans-serif, system-ui, sans-serif',
     })
-    const elements = container.querySelectorAll('.mermaid[data-mermaid]')
-    for (const el of elements) {
-      const code = el.getAttribute('data-mermaid')
-      if (code) {
-        el.textContent = code
-        el.removeAttribute('data-mermaid')
+    const elements = Array.from(container.querySelectorAll<HTMLElement>('.mermaid[data-mermaid]'))
+    for (const [index, element] of elements.entries()) {
+      const encoded = element.getAttribute('data-mermaid')
+      if (!encoded) continue
+
+      try {
+        const code = decodeURIComponent(encoded)
+        const id = `quietmarkdown-mermaid-${++mermaidRenderCounter}-${index}`
+        const { svg, bindFunctions } = await mermaid.default.render(id, code)
+        if (!element.isConnected) continue
+        element.innerHTML = svg
+        element.removeAttribute('data-mermaid')
+        bindFunctions?.(element)
+      } catch {
+        // Keep a visible fallback instead of leaving an empty diagram box.
+        element.classList.add('mermaid-error')
+        element.textContent = 'Unable to render this Mermaid diagram.'
+        element.removeAttribute('data-mermaid')
       }
     }
-    await mermaid.default.run({ nodes: Array.from(container.querySelectorAll('.mermaid')) })
   } catch {
-    // Mermaid failed to load or render, silently ignore
+    // Mermaid failed to load. The source remains available in the editor.
   }
 }
 

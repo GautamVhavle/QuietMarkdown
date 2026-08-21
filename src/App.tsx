@@ -191,7 +191,8 @@ Choose **Editorial** for a warm, expressive essay, **Minimal** for a quiet worki
 Your Markdown remains the source of truth. Everything else is presentation. QuietMarkdown is open source on [GitHub](https://github.com/GautamVhavle/QuietMarkdown).`
 
 const STORAGE_KEY = 'quietmarkdown:document:v1'
-const SETTINGS_KEY = 'quietmarkdown:export:v1'
+const SETTINGS_KEY = 'quietmarkdown:export:v2'
+const LEGACY_SETTINGS_KEY = 'quietmarkdown:export:v1'
 const THEME_KEY = 'quietmarkdown:theme:v1'
 
 type SaveState = 'saved' | 'saving'
@@ -291,15 +292,21 @@ const loadDocument = () => {
 
 const loadSettings = () => {
   try {
-    const stored = localStorage.getItem(SETTINGS_KEY)
+    const currentStored = localStorage.getItem(SETTINGS_KEY)
+    const stored = currentStored ?? localStorage.getItem(LEGACY_SETTINGS_KEY)
     if (stored) {
       const parsed = JSON.parse(stored) as Partial<ExportSettings>
+      const legacyWatermark = parsed.watermark
+      const shouldRefreshLegacyDefaults = !currentStored && legacyWatermark
+        && legacyWatermark.position === 'center'
+        && legacyWatermark.size === 42
+        && legacyWatermark.rotation === -28
       return {
         ...defaultExportSettings,
         ...parsed,
         watermark: {
           ...defaultExportSettings.watermark,
-          ...parsed.watermark,
+          ...(shouldRefreshLegacyDefaults ? {} : parsed.watermark),
         },
       }
     }
@@ -402,6 +409,7 @@ function ExportStudio({
   onToast,
 }: ExportStudioProps) {
   const captureRef = useRef<HTMLDivElement>(null)
+  const exportPreviewRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
   const dimensions = pageDimensions[settings.paper]
   const exportStyle = getExportStyle(settings)
@@ -428,6 +436,17 @@ function ExportStudio({
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
   }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    const frame = requestAnimationFrame(() => {
+      const containers = [exportPreviewRef.current, captureRef.current].filter(
+        (container): container is HTMLDivElement => Boolean(container),
+      )
+      void Promise.all(containers.map((container) => initMermaid(container)))
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, rendered])
 
   if (!open) return null
 
@@ -665,6 +684,16 @@ function ExportStudio({
     pageSource.style.minHeight = `${totalHeight}px`
     pageSource.style.transformOrigin = 'top left'
     viewport.append(pageSource)
+
+    // The source document is continuous, but each physical page has its own
+    // top and bottom margins. These masks hide the tail of the previous page
+    // and anything below the current content area while html-to-image captures
+    // the viewport.
+    const topMask = document.createElement('div')
+    const bottomMask = document.createElement('div')
+    topMask.style.cssText = `position:absolute;inset:0 0 auto;height:${settings.margin}px;background:${exportStyle.background};z-index:20;pointer-events:none;`
+    bottomMask.style.cssText = `position:absolute;inset:auto 0 0;height:${settings.margin}px;background:${exportStyle.background};z-index:20;pointer-events:none;`
+    viewport.append(topMask, bottomMask)
     document.body.append(viewport)
 
     try {
@@ -672,7 +701,7 @@ function ExportStudio({
         const boundary = boundaries[index]
         // Translate so the page's content area aligns with viewport top
         // boundary.top is the page start in the full document (including margin)
-        pageSource.style.transform = `translateY(-${boundary.top}px)`
+        pageSource.style.transform = `translate3d(0, -${boundary.top}px, 0)`
         const canvas = await toCanvas(viewport, {
           cacheBust: true,
           pixelRatio,
@@ -825,15 +854,19 @@ function ExportStudio({
 
             <section className="control-section watermark-section">
               <div className="section-heading watermark-heading">
-                <div><span>02</span><h3>Watermark</h3></div>
-                <button
-                  role="switch"
-                  aria-checked={settings.watermark.enabled}
-                  className={`switch ${settings.watermark.enabled ? 'on' : ''}`}
-                  onClick={() => updateWatermark('enabled', !settings.watermark.enabled)}
-                >
-                  <i />
-                </button>
+                <div>
+                  <span>02</span>
+                  <h3>Watermark</h3>
+                  <button
+                    role="switch"
+                    aria-label="Toggle watermark"
+                    aria-checked={settings.watermark.enabled}
+                    className={`switch ${settings.watermark.enabled ? 'on' : ''}`}
+                    onClick={() => updateWatermark('enabled', !settings.watermark.enabled)}
+                  >
+                    <i />
+                  </button>
+                </div>
               </div>
 
               <p className="watermark-scope">Applied to every PDF and PNG page. HTML and Markdown stay clean.</p>
@@ -919,7 +952,7 @@ function ExportStudio({
               <span>{settings.paper.toUpperCase()} · {settings.font}</span>
             </div>
             <div className="export-preview-viewport">
-              <div className="export-page-scaler">
+              <div ref={exportPreviewRef} className="export-page-scaler">
                 <ExportPage pageStyle={pageStyle} rendered={rendered} settings={settings} />
               </div>
             </div>
@@ -1028,7 +1061,10 @@ function App() {
   // Initialize mermaid diagrams in preview when rendered content changes
   useEffect(() => {
     if (!previewScrollRef.current) return
-    initMermaid(previewScrollRef.current)
+    const frame = requestAnimationFrame(() => {
+      if (previewScrollRef.current) void initMermaid(previewScrollRef.current)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [rendered])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {

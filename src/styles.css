@@ -235,6 +235,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Mermaid diagram styles */
 .markdown-body .mermaid { display: block; margin: 1.7em auto; max-width: 100%; overflow-x: auto; }
 .markdown-body .mermaid svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.markdown-body .mermaid-error { padding: 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-faint); font-size: 11px; }
 
 .preview-empty { display: flex; width: 100%; height: 100%; min-height: 420px; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--ink-soft); }
 .empty-mark { display: grid; width: 46px; height: 46px; margin-bottom: 18px; place-items: center; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-solid); color: var(--accent); box-shadow: 0 8px 24px rgba(30,29,27,.07); }
@@ -353,7 +354,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .range-field output { color: var(--ink-faint); font-family: 'DM Mono', monospace; font-size: 8px; }
 .range-field input[type='range'] { width: 100%; height: 3px; margin: 5px 0; appearance: none; border-radius: 4px; outline: none; background: linear-gradient(to right, var(--accent), var(--line)); accent-color: var(--accent); }
 .range-field input[type='range']::-webkit-slider-thumb { width: 14px; height: 14px; appearance: none; border: 3px solid var(--surface-solid); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(0,0,0,.18); cursor: grab; }
-.watermark-heading { margin-bottom: 8px; }
+.watermark-heading { justify-content: flex-start; margin-bottom: 8px; }
+.watermark-heading .switch { margin-left: 4px; }
 .watermark-scope { margin: 0 0 14px; color: var(--ink-faint); font-size: 8px; line-height: 1.5; }
 .switch { position: relative; width: 33px; height: 19px; border: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .2s ease; }
 .switch i { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s ease; }
@@ -409,6 +411,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .export-document table { width: 100%; margin: 1.6em 0; border-collapse: collapse; font-size: 14px; }
 .export-document th, .export-document td { padding: 10px 12px; border-bottom: 1px solid var(--export-rule); text-align: left; }
 .export-document img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 6px; }
+.export-document .mermaid { display: block; margin: 1.5em auto; max-width: 100%; overflow-x: auto; }
+.export-document .mermaid svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
 
 /* Each export preset has its own publishing tradition, not merely another color. */
 .export-preset-editorial .export-document { max-width: 650px; margin: 0 auto; }

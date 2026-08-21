@@ -49,10 +49,10 @@ export const defaultExportSettings: ExportSettings = {
   watermark: {
     enabled: true,
     text: 'quietmarkdown.vercel.app',
-    position: 'center',
+    position: 'bottom-right',
     opacity: 0.1,
-    size: 42,
-    rotation: -28,
+    size: 24,
+    rotation: 0,
     color: '#8f4232',
   },
 }
