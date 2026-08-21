@@ -14,6 +14,7 @@ test('loads a local-first document and renders Markdown', async ({ page }, testI
     await page.getByRole('button', { name: 'Preview' }).click()
   }
   await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
+  await expect(page.locator('.markdown-body .mermaid svg')).toHaveCount(1)
   const saveLabel = testInfo.project.name !== 'desktop-chromium'
     ? page.locator('.footer-save')
     : page.locator('.save-indicator')

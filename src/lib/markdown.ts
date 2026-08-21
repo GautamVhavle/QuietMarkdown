@@ -57,7 +57,7 @@ const markdown = new MarkdownIt({
 const defaultFence = markdown.renderer.rules.fence ?? ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
 markdown.renderer.rules.fence = (tokens, idx, options, _env, self) => {
   const token = tokens[idx]
-  const info = token.info ? token.info.trim() : ''
+  const info = token.info ? token.info.trim().split(/\s+/)[0].toLowerCase() : ''
   if (info === 'mermaid') {
     const code = token.content.trim()
     // Encode the source so quotes/newlines cannot interfere with the HTML
@@ -122,7 +122,12 @@ export async function initMermaid(container: HTMLElement): Promise<void> {
       }
     }
   } catch {
-    // Mermaid failed to load. The source remains available in the editor.
+    // Keep the preview understandable if the optional Mermaid chunk fails to load.
+    for (const element of Array.from(container.querySelectorAll<HTMLElement>('.mermaid[data-mermaid]'))) {
+      element.classList.add('mermaid-error')
+      element.textContent = 'Mermaid diagram unavailable. The source remains in the Markdown editor.'
+      element.removeAttribute('data-mermaid')
+    }
   }
 }
 

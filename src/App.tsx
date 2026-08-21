@@ -138,9 +138,9 @@ const draft: Draft = {
 
 ---
 
-## 5.5. Visualize with Mermaid
+## 5.5. From idea to a shareable document
 
-QuietMarkdown renders Mermaid diagrams live in the preview. Paste any Mermaid diagram in a fenced code block and it becomes an interactive SVG.
+QuietMarkdown can turn a rough idea into a clear, polished document. This diagram shows the loop: shape the structure, refine anything that is not ready, then export when the story is easy to follow.
 
 \`\`\`mermaid
 flowchart TD
@@ -156,6 +156,7 @@ flowchart TD
     H --> I[Choose export preset & watermark]
     I --> J[Download PDF / HTML / PNG]
     J --> K[Share with confidence]
+
     style A fill:#fef3c7,stroke:#d97706,stroke-width:2px
     style K fill:#d1fae5,stroke:#059669,stroke-width:2px
     style C fill:#fee2e2,stroke:#dc2626
@@ -164,9 +165,10 @@ flowchart TD
     style E fill:#e0e7ff,stroke:#4f46e5
     style H fill:#e0e7ff,stroke:#4f46e5
     style I fill:#fce7f3,stroke:#db2777
+
 \`\`\`
 
-*Diagrams render in real-time as you type. They export cleanly to PDF, HTML, and PNG.*
+*Mermaid diagrams render in real-time as you type and are included in PDF, HTML, and PNG exports.*
 
 ---
 
@@ -190,7 +192,8 @@ Choose **Editorial** for a warm, expressive essay, **Minimal** for a quiet worki
 
 Your Markdown remains the source of truth. Everything else is presentation. QuietMarkdown is open source on [GitHub](https://github.com/GautamVhavle/QuietMarkdown).`
 
-const STORAGE_KEY = 'quietmarkdown:document:v1'
+const STORAGE_KEY = 'quietmarkdown:document:v2'
+const LEGACY_DOCUMENT_KEY = 'quietmarkdown:document:v1'
 const SETTINGS_KEY = 'quietmarkdown:export:v2'
 const LEGACY_SETTINGS_KEY = 'quietmarkdown:export:v1'
 const THEME_KEY = 'quietmarkdown:theme:v1'
@@ -282,8 +285,14 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
 
 const loadDocument = () => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) return JSON.parse(stored) as { title: string; markdown: string }
+    const currentStored = localStorage.getItem(STORAGE_KEY)
+    const stored = currentStored ?? localStorage.getItem(LEGACY_DOCUMENT_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored) as { title: string; markdown: string }
+      const isOldStarter = parsed.title === 'QuietMarkdown editor field guide'
+        && !parsed.markdown.includes('J --> K[Share with confidence]')
+      if (!isOldStarter) return parsed
+    }
   } catch {
     // Invalid storage should never prevent the editor from loading.
   }
@@ -1065,7 +1074,7 @@ function App() {
       if (previewScrollRef.current) void initMermaid(previewScrollRef.current)
     })
     return () => cancelAnimationFrame(frame)
-  }, [rendered])
+  }, [rendered, viewMode])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
     const sourceRange = source.scrollHeight - source.clientHeight
