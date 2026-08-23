@@ -3,7 +3,11 @@ import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
-  await page.evaluate(() => localStorage.clear())
+  await page.evaluate(() => {
+    localStorage.clear()
+    // Most workflows assume the welcome tour has already been dismissed.
+    localStorage.setItem('quietmarkdown:welcome:v1', JSON.stringify({ seen: true }))
+  })
   await page.reload()
 })
 
@@ -355,4 +359,45 @@ test('embeds pasted images as local data URLs', async ({ page }) => {
   if (await page.getByRole('button', { name: 'Preview' }).isVisible()) {
     await expect(page.locator('.markdown-body img[src^="data:image"]')).toHaveCount(1)
   }
+})
+
+test('welcomes first-time visitors with a skippable tour', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'tour visuals are verified on desktop')
+  const dialog = page.locator('.welcome-dialog')
+
+  // Re-enter first-visitor state (beforeEach seeds a dismissed tour).
+  await page.evaluate(() => localStorage.removeItem('quietmarkdown:welcome:v1'))
+  await page.reload()
+
+  // First visit: the tour greets automatically.
+  await expect(dialog).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'A quiet place to write.' })).toBeVisible()
+
+  // Every scene renders its teaching visual.
+  await expect(page.locator('.mini-pane')).toHaveCount(2)
+  await page.locator('.welcome-next').click()
+  await expect(page.locator('.privacy-seal > svg')).toBeVisible()
+  await page.locator('.welcome-next').click()
+  await expect(page.locator('.capability-tile')).toHaveCount(6)
+  await page.locator('.welcome-next').click()
+  await expect(page.locator('.export-card')).toHaveCount(3)
+
+  // Dots track progress; Back returns.
+  await expect(page.locator('.welcome-dot.active')).toHaveCount(1)
+  await page.locator('.welcome-back').click()
+  await expect(page.locator('.capability-tile')).toHaveCount(6)
+  await page.locator('.welcome-next').click()
+
+  // Finishing dismisses for good.
+  await page.getByRole('button', { name: /Start writing/ }).click()
+  await expect(dialog).toHaveCount(0)
+
+  await page.reload()
+  await expect(dialog).toHaveCount(0)
+
+  // The brand mark doubles as the home button.
+  await page.locator('button.brand').click()
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
 })

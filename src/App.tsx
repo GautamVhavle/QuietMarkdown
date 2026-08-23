@@ -60,6 +60,7 @@ import {
   safeFilename,
 } from './lib/export'
 import { computePageBoundaries, getContentHeight, getContentWidth } from './lib/pagination'
+import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
 import { countDocument, renderMarkdown, initMermaid, freezeMermaidDiagrams, rasterizeMermaidDiagrams, stripMermaidRuntimeMarkup, fitMermaidDiagramsToPage } from './lib/markdown'
 import {
@@ -72,6 +73,7 @@ import {
 
 import { STARTER_TITLE, starterMarkdown } from './lib/starter'
 
+const WELCOME_KEY = 'quietmarkdown:welcome:v1'
 const LIBRARY_KEY = 'quietmarkdown:library:v1'
 const LEGACY_DOCUMENT_KEY = 'quietmarkdown:document:v1'
 const SETTINGS_KEY = 'quietmarkdown:export:v2'
@@ -1015,6 +1017,7 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [docsOpen, setDocsOpen] = useState(false)
+  const [welcomeOpen, setWelcomeOpen] = useState(() => readStorageJson<{ seen?: boolean }>(WELCOME_KEY).value?.seen !== true)
   const [deleteArmId, setDeleteArmId] = useState<string | null>(null)
   const [exportSettings, setExportSettings] = useState<ExportSettings>(loadSettings)
   const [lastSavedDocument, setLastSavedDocument] = useState(() => JSON.stringify({
@@ -1066,6 +1069,11 @@ function App() {
     }
     setStorageError(false)
     return true
+  }
+
+  const closeWelcome = () => {
+    writeStorageJson(WELCOME_KEY, { seen: true })
+    setWelcomeOpen(false)
   }
 
   // Write the ACTIVE document's latest content into the library and storage,
@@ -1652,11 +1660,17 @@ function App() {
       onDrop={handleDrop}
     >
       <header className="app-header">
-        <div className="brand" aria-label="QuietMarkdown home">
+        <button
+          type="button"
+          className="brand"
+          onClick={() => setWelcomeOpen(true)}
+          aria-label="About QuietMarkdown"
+          title="What is QuietMarkdown?"
+        >
           <span className="brand-mark">Q</span>
           <span className="brand-name">QuietMarkdown</span>
           <span className="local-badge"><ShieldCheck size={11} /> Local</span>
-        </div>
+        </button>
 
         <nav className="view-switcher" aria-label="Document view">
           {([
@@ -1986,6 +2000,8 @@ function App() {
           </div>
         </>
       )}
+
+      {welcomeOpen && <WelcomeTour onClose={closeWelcome} />}
 
       <ExportStudio
         open={exportOpen}
