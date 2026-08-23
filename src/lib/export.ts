@@ -240,6 +240,9 @@ export function getExportCss(settings: ExportSettings) {
     th, td { padding: .72em .8em; border-bottom: 1px solid ${style.rule}; text-align: left; }
     th { color: ${style.heading}; font-weight: 650; }
     img { display: block; max-width: 100%; height: auto; margin: 1.5em auto; border-radius: 6px; }
+    .mermaid { display: block; margin: 1.6em auto; text-align: center; }
+    .mermaid .mermaid-figure { width: 100%; }
+    .mermaid img.mermaid-img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
     input[type='checkbox'] { accent-color: ${settings.accent}; }
     ${getPresetCss(settings.preset)}
     @page { size: ${paper.css}; margin: 0; }

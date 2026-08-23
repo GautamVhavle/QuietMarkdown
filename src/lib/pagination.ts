@@ -6,6 +6,14 @@ const KEEP_TOGETHER = new Set([
   'BLOCKQUOTE', 'PRE', 'TABLE', 'HR', 'IMG', 'FIGURE',
 ])
 
+function isKeepTogether(element: HTMLElement): boolean {
+  // Mermaid diagram blocks are plain DIVs but must never be split — a page
+  // break through one crops the drawing mid-shape. Oversized ones are scaled
+  // to fit a single page before pagination runs (fitMermaidDiagramsToPage).
+  if (element.classList.contains('mermaid')) return true
+  return KEEP_TOGETHER.has(element.tagName)
+}
+
 export function getContentHeight(settings: ExportSettings): number {
   const dimensions = pageDimensions[settings.paper]
   return dimensions.height - 2 * settings.margin
@@ -44,7 +52,7 @@ function getElementMetrics(sourceElement: HTMLElement): ElementMetric[] {
       top: rect.top - sourceRect.top,
       bottom: rect.bottom - sourceRect.top,
       height: rect.height,
-      keepTogether: KEEP_TOGETHER.has(element.tagName),
+      keepTogether: isKeepTogether(element),
     }
   })
 }
@@ -86,11 +94,15 @@ function getSafeBreak(element: HTMLElement, sourceElement: HTMLElement, limit: n
  * that should be shown at the top of a physical page. Pages are packed around
  * real element and line boundaries, so text is never clipped halfway through a
  * rendered line just because a fixed page-height boundary happened to land there.
+ *
+ * `blankFrom` (optional) marks source Y where the rest of that page's viewport
+ * must be painted over: a keep-together block was moved to the next page, and
+ * its head would otherwise peek into the current page's lower content area.
  */
 export function computePageBoundaries(
   sourceElement: HTMLElement,
   settings: ExportSettings,
-): { top: number; bottom: number }[] {
+): { top: number; bottom: number; blankFrom?: number }[] {
   const dimensions = pageDimensions[settings.paper]
   const pageHeight = dimensions.height
   const margin = settings.margin
@@ -99,7 +111,7 @@ export function computePageBoundaries(
 
   if (metrics.length === 0) return [{ top: 0, bottom: pageHeight }]
 
-  const boundaries: { top: number; bottom: number }[] = [{ top: 0, bottom: pageHeight }]
+  const boundaries: { top: number; bottom: number; blankFrom?: number }[] = [{ top: 0, bottom: pageHeight }]
   let pageTop = 0
   let pageContentEnd = pageTop + margin + contentHeight
   let pageHasContent = false
@@ -119,6 +131,10 @@ export function computePageBoundaries(
     let nextPageTop: number
     if (pageHasContent && metric.keepTogether && fitsOnFreshPage) {
       nextPageTop = Math.max(pageTop + 1, metric.top - margin)
+      // Whatever sits below this point on the CURRENT page is the moved
+      // block's head (plus later siblings that follow it) — hide it.
+      const currentBoundary = boundaries[boundaries.length - 1]
+      currentBoundary.blankFrom = Math.max(pageTop + margin, metric.top)
     } else {
       // For flowing text (and oversized blocks), break at the last complete
       // rendered line that fits. The following page starts at that line's end.

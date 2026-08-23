@@ -6,10 +6,13 @@ import {
   Code2,
   CodeXml,
   Columns2,
+  Copy,
   Download,
   Eye,
   FileDown,
+  FilePlus2,
   FileText,
+  Files,
   FolderOpen,
   Heading1,
   Heading2,
@@ -26,17 +29,20 @@ import {
   Moon,
   PenLine,
   Quote,
+  Search,
   ShieldCheck,
   Sparkles,
   Strikethrough,
   Sun,
   Table2,
+  Trash2,
   UploadCloud,
   X,
 } from 'lucide-react'
 import {
   type CSSProperties,
   type ChangeEvent,
+  type ClipboardEvent as ReactClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
   type RefObject,
@@ -53,8 +59,9 @@ import {
   pageDimensions,
   safeFilename,
 } from './lib/export'
-import { computePageBoundaries } from './lib/pagination'
-import { countDocument, renderMarkdown, initMermaid } from './lib/markdown'
+import { computePageBoundaries, getContentHeight, getContentWidth } from './lib/pagination'
+import { readStorageJson, writeStorageJson } from './lib/storage'
+import { countDocument, renderMarkdown, initMermaid, freezeMermaidDiagrams, rasterizeMermaidDiagrams, stripMermaidRuntimeMarkup, fitMermaidDiagramsToPage } from './lib/markdown'
 import {
   defaultExportSettings,
   type ExportSettings,
@@ -197,13 +204,85 @@ Choose **Editorial** for a warm, expressive essay, **Minimal** for a quiet worki
 
 Your Markdown remains the source of truth. Everything else is presentation. QuietMarkdown is open source on [GitHub](https://github.com/GautamVhavle/QuietMarkdown).`
 
-const STORAGE_KEY = 'quietmarkdown:document:v2'
+const LIBRARY_KEY = 'quietmarkdown:library:v1'
 const LEGACY_DOCUMENT_KEY = 'quietmarkdown:document:v1'
 const SETTINGS_KEY = 'quietmarkdown:export:v2'
 const LEGACY_SETTINGS_KEY = 'quietmarkdown:export:v1'
 const THEME_KEY = 'quietmarkdown:theme:v1'
 
-type SaveState = 'saved' | 'saving'
+type SaveState = 'saved' | 'saving' | 'error'
+
+interface LibraryDoc {
+  id: string
+  title: string
+  markdown: string
+  updatedAt: number
+}
+
+interface Library {
+  activeId: string
+  docs: LibraryDoc[]
+}
+
+const STARTER_TITLE = 'QuietMarkdown editor field guide'
+const MAX_LIBRARY_DOCS = 100
+
+const createDocId = () => `doc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+
+function normalizeStoredDoc(value: unknown): LibraryDoc | null {
+  if (!value || typeof value !== 'object') return null
+  const doc = value as Partial<LibraryDoc>
+  if (typeof doc.markdown !== 'string') return null
+  return {
+    id: typeof doc.id === 'string' && doc.id ? doc.id : createDocId(),
+    title: typeof doc.title === 'string' ? doc.title : 'Untitled document',
+    markdown: doc.markdown,
+    updatedAt: typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now(),
+  }
+}
+
+/**
+ * Load the document library. Reads the current schema first; falls back to
+ * migrating an older single-document save; finally to the starter note.
+ * Corrupt or hostile payloads never crash the editor.
+ */
+const loadLibrary = (): Library => {
+  try {
+    const stored = readStorageJson<Partial<Library>>(LIBRARY_KEY).value
+    if (stored && Array.isArray(stored.docs)) {
+      const docs = stored.docs
+        .map(normalizeStoredDoc)
+        .filter((doc): doc is LibraryDoc => Boolean(doc))
+        .slice(0, MAX_LIBRARY_DOCS)
+      if (docs.length > 0) {
+        const activeId = docs.some((doc) => doc.id === stored.activeId)
+          ? (stored.activeId as string)
+          : docs[0].id
+        return { activeId, docs }
+      }
+    }
+  } catch {
+    // Fall through to legacy migration.
+  }
+
+  // Migrate the pre-library single-document format.
+  let migrated: LibraryDoc | null = null
+  try {
+    const raw = localStorage.getItem(LEGACY_DOCUMENT_KEY) ?? localStorage.getItem('quietmarkdown:document:v2')
+    if (raw) {
+      const parsed = JSON.parse(raw) as { title?: unknown; markdown?: unknown }
+      if (typeof parsed.markdown === 'string') {
+        migrated = normalizeStoredDoc({ title: parsed.title, markdown: parsed.markdown })
+      }
+    }
+  } catch {
+    // Ignore malformed legacy data.
+  }
+  if (!migrated) {
+    migrated = { id: createDocId(), title: STARTER_TITLE, markdown: starterMarkdown, updatedAt: Date.now() }
+  }
+  return { activeId: migrated.id, docs: [migrated] }
+}
 type FormatAction =
   | 'bold'
   | 'italic'
@@ -288,55 +367,50 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   }
 }
 
-const loadDocument = () => {
-  try {
-    const currentStored = localStorage.getItem(STORAGE_KEY)
-    const stored = currentStored ?? localStorage.getItem(LEGACY_DOCUMENT_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored) as { title: string; markdown: string }
-      const hasCurrentStarterDiagram = parsed.markdown.includes(
-        'linkStyle default stroke:#808080,stroke-width:2px',
-      )
-      const isOldStarter = parsed.title === 'QuietMarkdown editor field guide'
-        && !hasCurrentStarterDiagram
-      if (!isOldStarter) return parsed
-    }
-  } catch {
-    // Invalid storage should never prevent the editor from loading.
-  }
-  return { title: 'QuietMarkdown editor field guide', markdown: starterMarkdown }
-}
-
 const loadSettings = () => {
-  try {
-    const currentStored = localStorage.getItem(SETTINGS_KEY)
-    const stored = currentStored ?? localStorage.getItem(LEGACY_SETTINGS_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored) as Partial<ExportSettings>
-      const legacyWatermark = parsed.watermark
-      const shouldRefreshLegacyDefaults = !currentStored && legacyWatermark
-        && legacyWatermark.position === 'center'
-        && legacyWatermark.size === 42
-        && legacyWatermark.rotation === -28
-      return {
-        ...defaultExportSettings,
-        ...parsed,
-        watermark: {
-          ...defaultExportSettings.watermark,
-          ...(shouldRefreshLegacyDefaults ? {} : parsed.watermark),
-        },
-      }
+  const current = readStorageJson<Partial<ExportSettings>>(SETTINGS_KEY)
+  const stored = current.value ?? readStorageJson<Partial<ExportSettings>>(LEGACY_SETTINGS_KEY).value
+  if (stored && typeof stored === 'object') {
+    const parsed = stored
+    const legacyWatermark = parsed.watermark
+    // One-time refresh of watermark defaults that shipped in an early version.
+    const shouldRefreshLegacyDefaults = !current.value && legacyWatermark
+      && legacyWatermark.position === 'center'
+      && legacyWatermark.size === 42
+      && legacyWatermark.rotation === -28
+    return {
+      ...defaultExportSettings,
+      ...parsed,
+      watermark: {
+        ...defaultExportSettings.watermark,
+        ...(shouldRefreshLegacyDefaults ? {} : parsed.watermark),
+      },
     }
-  } catch {
-    // Fall back to sensible defaults.
   }
   return defaultExportSettings
 }
 
 const getInitialTheme = (): Theme => {
-  const stored = localStorage.getItem(THEME_KEY)
+  let stored: string | null = null
+  try {
+    stored = localStorage.getItem(THEME_KEY)
+  } catch {
+    // Hardened storage just means we fall back to the system theme.
+  }
   if (stored === 'light' || stored === 'dark') return stored
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+function relativeTime(timestamp: number): string {
+  const seconds = Math.round((Date.now() - timestamp) / 1000)
+  if (seconds < 45) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(timestamp).toLocaleDateString()
 }
 
 function GitHubMark({ size = 14 }: { size?: number }) {
@@ -457,10 +531,14 @@ function ExportStudio({
   useEffect(() => {
     if (!open) return
     const frame = requestAnimationFrame(() => {
-      const containers = [exportPreviewRef.current, captureRef.current].filter(
-        (container): container is HTMLDivElement => Boolean(container),
-      )
-      void Promise.all(containers.map((container) => initMermaid(container)))
+      const preview = exportPreviewRef.current
+      const capture = captureRef.current
+      void Promise.all([
+        preview ? initMermaid(preview) : Promise.resolve(),
+        // The capture host is a scratch surface: it gets frozen into <img>s
+        // right before rasterization, so it must not self-heal back to SVGs.
+        capture ? initMermaid(capture, 'light', { watch: false }) : Promise.resolve(),
+      ])
     })
     return () => cancelAnimationFrame(frame)
   }, [open, rendered])
@@ -495,13 +573,31 @@ function ExportStudio({
     })
   }
 
-  const exportHtml = () => {
-    downloadBlob(
-      createExportHtml(title, rendered, settings),
-      `${safeFilename(title)}.html`,
-      'application/octet-stream',
-    )
-    onToast('HTML file downloaded without watermark')
+  const exportHtml = async () => {
+    // Render diagrams into an offscreen stage, then freeze them into
+    // self-contained <img> data URLs so the downloaded file shows the
+    // rendered diagrams everywhere — no JavaScript required.
+    const stage = document.createElement('div')
+    stage.className = 'export-document'
+    stage.style.cssText = 'position:fixed;left:-12000px;top:0;width:700px;background:transparent;'
+    stage.innerHTML = rendered
+    document.body.append(stage)
+    try {
+      await initMermaid(stage, 'light', { watch: false })
+      await document.fonts.ready
+      freezeMermaidDiagrams(stage)
+      stripMermaidRuntimeMarkup(stage)
+      downloadBlob(
+        createExportHtml(title, stage.innerHTML, settings),
+        `${safeFilename(title)}.html`,
+        'application/octet-stream',
+      )
+      onToast('HTML file downloaded without watermark')
+    } catch {
+      onToast('Could not prepare the HTML export')
+    } finally {
+      stage.remove()
+    }
   }
 
   const exportPdf = async () => {
@@ -570,8 +666,12 @@ function ExportStudio({
 
       const bytes = await pdf.save({ useObjectStreams: true })
       downloadBlob(new Uint8Array(bytes).buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
-      onToast('PDF downloaded with a watermark on every page')
-    } catch {
+      const invalidDiagrams = captureRef.current?.querySelectorAll('.mermaid-invalid').length ?? 0
+      onToast(invalidDiagrams > 0
+        ? `PDF saved · ${invalidDiagrams} diagram${invalidDiagrams === 1 ? '' : 's'} kept their last valid version`
+        : 'PDF downloaded with a watermark on every page')
+    } catch (error) {
+      console.error('PDF export failed', error)
       onToast('This document could not be rendered as a PDF')
     } finally {
       setExporting(null)
@@ -608,8 +708,12 @@ function ExportStudio({
       })
       const zip = await archive.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
       downloadBlob(zip, `${filename}-png-pages.zip`, 'application/zip')
-      onToast(`${pageCount} high-resolution PNG pages downloaded as ZIP`)
-    } catch {
+      const invalidDiagrams = captureRef.current?.querySelectorAll('.mermaid-invalid').length ?? 0
+      onToast(invalidDiagrams > 0
+        ? `${pageCount} PNG pages saved · ${invalidDiagrams} diagram${invalidDiagrams === 1 ? '' : 's'} kept their last valid version`
+        : `${pageCount} high-resolution PNG pages downloaded as ZIP`)
+    } catch (error) {
+      console.error('PNG export failed', error)
       onToast('This document could not be rendered as PNG pages')
     } finally {
       setExporting(null)
@@ -677,6 +781,18 @@ function ExportStudio({
     includeWatermark = true,
   ) => {
     if (!captureRef.current) return
+    // Guarantee every diagram is rendered, then swap it for a pre-rasterized
+    // PNG — nested inline SVGs are unreliable through html-to-image's
+    // foreignObject serialization, plain raster images are not.
+    await initMermaid(captureRef.current, 'light', { watch: false })
+    await rasterizeMermaidDiagrams(captureRef.current)
+    // Oversized diagrams shrink to fit a single page so pagination never
+    // slices through them; boundaries must be computed after this.
+    fitMermaidDiagramsToPage(
+      captureRef.current,
+      getContentHeight(settings),
+      getContentWidth(settings),
+    )
     await document.fonts.ready
     const images = Array.from(captureRef.current.querySelectorAll('img'))
     await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
@@ -710,7 +826,11 @@ function ExportStudio({
     const bottomMask = document.createElement('div')
     topMask.style.cssText = `position:absolute;inset:0 0 auto;height:${settings.margin}px;background:${exportStyle.background};z-index:20;pointer-events:none;`
     bottomMask.style.cssText = `position:absolute;inset:auto 0 0;height:${settings.margin}px;background:${exportStyle.background};z-index:20;pointer-events:none;`
-    viewport.append(topMask, bottomMask)
+    // Keep-together blocks moved to the next page leave their head behind in
+    // the current page's content area — the flow mask paints that region over.
+    const flowMask = document.createElement('div')
+    flowMask.style.cssText = `position:absolute;left:0;width:100%;background:${exportStyle.background};z-index:20;pointer-events:none;display:none;`
+    viewport.append(topMask, bottomMask, flowMask)
     document.body.append(viewport)
 
     try {
@@ -719,6 +839,13 @@ function ExportStudio({
         // Translate so the page's content area aligns with viewport top
         // boundary.top is the page start in the full document (including margin)
         pageSource.style.transform = `translate3d(0, -${boundary.top}px, 0)`
+        if (boundary.blankFrom !== undefined) {
+          flowMask.style.display = 'block'
+          flowMask.style.top = `${Math.max(0, boundary.blankFrom - boundary.top)}px`
+          flowMask.style.height = `${Math.ceil(boundary.bottom - boundary.blankFrom)}px`
+        } else {
+          flowMask.style.display = 'none'
+        }
         const canvas = await toCanvas(viewport, {
           cacheBust: true,
           pixelRatio,
@@ -1005,11 +1132,13 @@ function ExportStudio({
 }
 
 function App() {
-  const [initialDocument] = useState(loadDocument)
-  const [title, setTitle] = useState(initialDocument.title)
+  const [library, setLibrary] = useState<Library>(loadLibrary)
+  const [activeId, setActiveId] = useState(library.activeId)
+  const activeDoc = library.docs.find((doc) => doc.id === activeId) ?? library.docs[0]
+  const [title, setTitle] = useState(activeDoc.title)
   const [editor, setEditor] = useReducer(
     editorReducer,
-    { markdown: initialDocument.markdown, history: [initialDocument.markdown], historyIndex: 0 },
+    { markdown: activeDoc.markdown, history: [activeDoc.markdown], historyIndex: 0 },
   )
   const markdown = editor.markdown
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
@@ -1018,35 +1147,112 @@ function App() {
   )
   const [exportOpen, setExportOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [docsOpen, setDocsOpen] = useState(false)
+  const [deleteArmId, setDeleteArmId] = useState<string | null>(null)
   const [exportSettings, setExportSettings] = useState<ExportSettings>(loadSettings)
-  const [lastSavedDocument, setLastSavedDocument] = useState(() => JSON.stringify(initialDocument))
+  const [lastSavedDocument, setLastSavedDocument] = useState(() => JSON.stringify({
+    id: library.activeId,
+    title: activeDoc.title,
+    markdown: activeDoc.markdown,
+  }))
+  const [storageError, setStorageError] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [toast, setToast] = useState('')
   const [isMac, setIsMac] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  // Find & Replace state for the editor pane.
+  const [findPanel, setFindPanel] = useState<'closed' | 'find' | 'replace'>('closed')
+  const [findQuery, setFindQuery] = useState('')
+  const [replaceWith, setReplaceWith] = useState('')
+  const [matchCase, setMatchCase] = useState(false)
+  const [matchIndex, setMatchIndex] = useState(0)
+  const findInputRef = useRef<HTMLInputElement>(null)
+  const saveTimerRef = useRef<number | null>(null)
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const scrollSyncOriginRef = useRef<'editor' | 'preview' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const rendered = useMemo(() => renderMarkdown(markdown), [markdown])
+
+  // The rendered preview trails typing by a single task tick (and slightly
+  // longer for very large documents) so fast keystrokes stay smooth.
+  const [rendered, setRendered] = useState<string>(() => renderMarkdown(activeDoc.markdown))
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setRendered(renderMarkdown(markdown)),
+      markdown.length > 30_000 ? 160 : 0,
+    )
+    return () => window.clearTimeout(timer)
+  }, [markdown])
+
   const stats = useMemo(() => countDocument(markdown), [markdown])
-  const currentDocument = useMemo(() => JSON.stringify({ title, markdown }), [title, markdown])
-  const saveState: SaveState = currentDocument === lastSavedDocument ? 'saved' : 'saving'
+  const currentDocument = useMemo(
+    () => JSON.stringify({ id: activeId, title, markdown }),
+    [activeId, title, markdown],
+  )
+  const saveState: SaveState = storageError ? 'error' : currentDocument === lastSavedDocument ? 'saved' : 'saving'
+
+  const persistLibrary = (next: Library): boolean => {
+    const result = writeStorageJson(LIBRARY_KEY, next)
+    if (!result.ok) {
+      setStorageError(true)
+      return false
+    }
+    setStorageError(false)
+    return true
+  }
+
+  // Write the ACTIVE document's latest content into the library and storage,
+  // and mirror it into component state so later operations never act on a
+  // stale snapshot. Always build the next state from the returned value.
+  const flushActiveDoc = (): Library => {
+    const next: Library = {
+      activeId,
+      docs: library.docs.map((doc) => (
+        doc.id === activeId ? { ...doc, title, markdown, updatedAt: Date.now() } : doc
+      )),
+    }
+    persistLibrary(next)
+    setLibrary(next)
+    return next
+  }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      localStorage.setItem(STORAGE_KEY, currentDocument)
+    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null
+      flushActiveDoc()
       setLastSavedDocument(currentDocument)
     }, 450)
-    return () => window.clearTimeout(timer)
+    return () => {
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDocument])
 
+  // Warn before closing while a save is still in flight or storage refused.
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(exportSettings))
+    const handler = (event: BeforeUnloadEvent) => {
+      if (storageError || currentDocument !== lastSavedDocument) event.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [storageError, currentDocument, lastSavedDocument])
+
+  const writeSettingsSafely = (value: ExportSettings) => {
+    const result = writeStorageJson(SETTINGS_KEY, value)
+    if (!result.ok) console.warn('Export preferences could not be saved locally', result.error)
+  }
+
+  useEffect(() => {
+    writeSettingsSafely(exportSettings)
   }, [exportSettings])
 
   useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme)
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // Theme preference is cosmetic; losing it is acceptable.
+    }
     document.documentElement.dataset.theme = theme
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       'content',
@@ -1059,6 +1265,21 @@ function App() {
     const timer = window.setTimeout(() => setToast(''), 2600)
     return () => window.clearTimeout(timer)
   }, [toast])
+
+  // Close the documents popover or find panel on Escape.
+  useEffect(() => {
+    if (!docsOpen && findPanel === 'closed') return
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (docsOpen) setDocsOpen(false)
+      else {
+        setFindPanel('closed')
+        editorRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [docsOpen, findPanel])
 
   // Detect platform (Mac vs Windows) and mobile
   useEffect(() => {
@@ -1075,13 +1296,18 @@ function App() {
     return () => window.removeEventListener('resize', checkPlatform)
   }, [])
 
-  // Initialize mermaid diagrams in preview when rendered content changes
+  // Keep mermaid diagrams in sync with the preview. Edits are debounced so a
+  // burst of keystrokes collapses into one render pass; theme and layout
+  // switches apply immediately. The diagram cache makes repeat runs cheap.
+  const mermaidMetaRef = useRef<{ theme: Theme; viewMode: ViewMode } | null>(null)
   useEffect(() => {
-    if (!previewScrollRef.current) return
-    const frame = requestAnimationFrame(() => {
+    const previous = mermaidMetaRef.current
+    mermaidMetaRef.current = { theme, viewMode }
+    const metaChanged = !previous || previous.theme !== theme || previous.viewMode !== viewMode
+    const timer = window.setTimeout(() => {
       if (previewScrollRef.current) void initMermaid(previewScrollRef.current, theme)
-    })
-    return () => cancelAnimationFrame(frame)
+    }, metaChanged ? 0 : 180)
+    return () => window.clearTimeout(timer)
   }, [rendered, theme, viewMode])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
@@ -1115,6 +1341,254 @@ function App() {
       editorRef.current?.focus()
       editorRef.current?.setSelectionRange(selectionStart, selectionEnd)
     })
+  }
+
+  /* ------------------------- Document library ------------------------- */
+
+  const switchDoc = (id: string) => {
+    if (id === activeId) return
+    // Persist the outgoing document immediately so nothing is lost mid-switch.
+    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = null
+    const flushed = flushActiveDoc()
+    const target = flushed.docs.find((doc) => doc.id === id)
+    if (!target) return
+    const next: Library = { activeId: id, docs: flushed.docs }
+    persistLibrary(next)
+    setLibrary(next)
+    setActiveId(id)
+    setTitle(target.title)
+    setEditor({ type: 'RESET', markdown: target.markdown })
+    setLastSavedDocument(JSON.stringify({ id, title: target.title, markdown: target.markdown }))
+    setDocsOpen(false)
+    setToast(`${target.title || 'Untitled document'} opened`)
+  }
+
+  const createDoc = () => {
+    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = null
+    const flushed = flushActiveDoc()
+    const docId = createDocId()
+    const doc: LibraryDoc = {
+      id: docId,
+      title: 'Untitled document',
+      markdown: '',
+      // eslint-disable-next-line react-hooks/purity -- runs in a click handler, never during render
+      updatedAt: Date.now(),
+    }
+    const next: Library = { activeId: doc.id, docs: [doc, ...flushed.docs].slice(0, MAX_LIBRARY_DOCS) }
+    if (!persistLibrary(next)) return
+    setLibrary(next)
+    setActiveId(doc.id)
+    setTitle(doc.title)
+    setEditor({ type: 'RESET', markdown: '' })
+    setLastSavedDocument(JSON.stringify({ id: doc.id, title: doc.title, markdown: '' }))
+    setDocsOpen(false)
+    setToast('New document created')
+    requestAnimationFrame(() => editorRef.current?.focus())
+  }
+
+  const duplicateDoc = (id: string) => {
+    const current = flushActiveDoc()
+    const source = current.docs.find((doc) => doc.id === id)
+    if (!source) return
+    if (current.docs.length >= MAX_LIBRARY_DOCS) {
+      setToast(`Library holds up to ${MAX_LIBRARY_DOCS} documents`)
+      return
+    }
+    const copy: LibraryDoc = { ...source, id: createDocId(), title: `${source.title || 'Untitled'} (copy)`, updatedAt: Date.now() }
+    const next: Library = {
+      activeId,
+      docs: [copy, ...current.docs].slice(0, MAX_LIBRARY_DOCS),
+    }
+    if (!persistLibrary(next)) return
+    setLibrary(next)
+    setToast('Document duplicated')
+  }
+
+  const deleteDoc = (id: string) => {
+    const current = flushActiveDoc()
+    if (current.docs.length <= 1) {
+      setToast('The last document cannot be deleted')
+      return
+    }
+    const remaining = current.docs.filter((doc) => doc.id !== id)
+    let next: Library
+    if (id === activeId) {
+      // Switch to the most recently updated remaining document.
+      const fallback = [...remaining].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+      next = { activeId: fallback.id, docs: remaining }
+      if (!persistLibrary(next)) return
+      setLibrary(next)
+      setActiveId(fallback.id)
+      setTitle(fallback.title)
+      setEditor({ type: 'RESET', markdown: fallback.markdown })
+      setLastSavedDocument(JSON.stringify({ id: fallback.id, title: fallback.title, markdown: fallback.markdown }))
+    } else {
+      next = { activeId, docs: remaining }
+      if (!persistLibrary(next)) return
+      setLibrary(next)
+    }
+    setDeleteArmId(null)
+    setToast('Document deleted')
+  }
+
+  /* --------------------------- Find & Replace -------------------------- */
+
+  type Match = { start: number; end: number }
+  const matches: Match[] = useMemo(() => {
+    if (!findQuery) return []
+    const found: Match[] = []
+    const haystack = matchCase ? markdown : markdown.toLowerCase()
+    const needle = matchCase ? findQuery : findQuery.toLowerCase()
+    let cursor = 0
+    while (found.length < 2000) {
+      const index = haystack.indexOf(needle, cursor)
+      if (index === -1) break
+      found.push({ start: index, end: index + needle.length })
+      cursor = index + Math.max(1, needle.length)
+    }
+    return found
+  }, [markdown, findQuery, matchCase])
+
+  // Derived clamp keeps the active match valid as the query or text changes.
+  const safeMatchIndex = matches.length === 0 ? 0 : matchIndex % matches.length
+
+  useEffect(() => {
+    if (findPanel === 'closed') return
+    findInputRef.current?.focus()
+    findInputRef.current?.select()
+  }, [findPanel])
+
+  const gotoMatch = (offset: number) => {
+    if (matches.length === 0) return
+    const nextIndex = (safeMatchIndex + offset + matches.length) % matches.length
+    setMatchIndex(nextIndex)
+    const match = matches[nextIndex]
+    const area = editorRef.current
+    if (!area) return
+    area.focus()
+    area.setSelectionRange(match.start, match.end)
+    // Scroll the matched line into view.
+    const line = markdown.slice(0, match.start).split('\n').length
+    area.scrollTop = Math.max(0, (line - 4) * 27)
+  }
+
+  const replaceCurrent = () => {
+    const match = matches[safeMatchIndex]
+    if (!match) return
+    const area = editorRef.current
+    if (area && !(area.selectionStart === match.start && area.selectionEnd === match.end)) {
+      gotoMatch(0)
+      return
+    }
+    const next = `${markdown.slice(0, match.start)}${replaceWith}${markdown.slice(match.end)}`
+    setEditorValue(next, match.start + replaceWith.length, match.start + replaceWith.length)
+  }
+
+  const replaceAll = () => {
+    if (matches.length === 0) return
+    const count = matches.length
+    const parts: string[] = []
+    let cursor = 0
+    for (const match of matches) {
+      parts.push(markdown.slice(cursor, match.start), replaceWith)
+      cursor = match.end
+    }
+    parts.push(markdown.slice(cursor))
+    const next = parts.join('')
+    setEditor({ type: 'UPDATE', markdown: next })
+    setToast(`${count} replacement${count === 1 ? '' : 's'} made`)
+  }
+
+  const openFindPanel = (mode: 'find' | 'replace') => {
+    setFindPanel(mode)
+    // Seed the query with the current selection when there is one.
+    const area = editorRef.current
+    const selected = area ? markdown.slice(area.selectionStart, area.selectionEnd) : ''
+    if (selected && !selected.includes('\n')) setFindQuery(selected)
+    setMatchIndex(0)
+  }
+
+  /* ------------------------ Image embedding ---------------------------- */
+
+  const insertIntoEditor = (snippet: string) => {
+    const area = editorRef.current
+    const start = area?.selectionStart ?? markdown.length
+    const end = area?.selectionEnd ?? markdown.length
+    const before = markdown.slice(0, start)
+    const after = markdown.slice(end)
+    // Keep Markdown tidy: embedded images sit on their own line.
+    const prefix = !before || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n'
+    const cursor = before.length + prefix.length + snippet.length + 2
+    setEditorValue(`${before}${prefix}${snippet}\n\n${after}`, cursor, cursor)
+  }
+
+  const embedImageFile = async (file: File): Promise<void> => {
+    try {
+      let dataUrl: string
+      if (file.type === 'image/svg+xml') {
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.onerror = () => reject(new Error('read failed'))
+          reader.readAsDataURL(file)
+        })
+      } else {
+        // Primary decode path; falls back to <img> because createImageBitmap
+        // rejects some images browsers happily render (lenient CRCs, etc).
+        let sourceWidth = 0
+        let sourceHeight = 0
+        let drawable: ImageBitmap | HTMLImageElement | null = null
+        try {
+          const bitmap = await createImageBitmap(file)
+          drawable = bitmap
+          sourceWidth = bitmap.width
+          sourceHeight = bitmap.height
+        } catch {
+          drawable = null
+        }
+        if (!drawable) {
+          const objectUrl = URL.createObjectURL(file)
+          try {
+            const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+              const element = new Image()
+              element.onload = () => resolve(element)
+              element.onerror = () => reject(new Error('image could not be decoded'))
+              element.src = objectUrl
+            })
+            drawable = image
+            sourceWidth = image.naturalWidth
+            sourceHeight = image.naturalHeight
+          } finally {
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000)
+          }
+        }
+        if (!drawable || sourceWidth === 0 || sourceHeight === 0) throw new Error('undecodable image')
+
+        const maxDim = 1600
+        const scale = Math.min(1, maxDim / Math.max(sourceWidth, sourceHeight))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(sourceWidth * scale))
+        canvas.height = Math.max(1, Math.round(sourceHeight * scale))
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error('canvas unavailable')
+        context.drawImage(drawable, 0, 0, canvas.width, canvas.height)
+        if ('close' in drawable && typeof drawable.close === 'function') drawable.close()
+        // PNG keeps crisp text and diagrams; JPEG keeps photos small.
+        const preferPng = file.type === 'image/png' && file.size < 300_000
+        dataUrl = canvas.toDataURL(preferPng ? 'image/png' : 'image/jpeg', 0.85)
+      }
+      if (dataUrl.length > 3_000_000) {
+        setToast('Image is too large to embed locally')
+        return
+      }
+      const name = file.name && !file.name.startsWith('blob') ? file.name.replace(/\.[a-z0-9]+$/i, '') : 'embedded image'
+      insertIntoEditor(`![${name}](${dataUrl})`)
+      setToast('Image embedded in the document')
+    } catch {
+      setToast('This image could not be embedded')
+    }
   }
 
   const applyFormat = (action: FormatAction) => {
@@ -1211,7 +1685,20 @@ function App() {
     event.preventDefault()
     setDragging(false)
     const file = event.dataTransfer.files?.[0]
-    if (file) void loadFile(file)
+    if (!file) return
+    // Images dropped onto the app embed into the document; Markdown files open.
+    if (file.type.startsWith('image/')) {
+      void embedImageFile(file)
+      return
+    }
+    void loadFile(file)
+  }
+
+  const handleEditorPaste = (event: ReactClipboardEvent<HTMLTextAreaElement>) => {
+    const file = Array.from(event.clipboardData?.files ?? []).find((item) => item.type.startsWith('image/'))
+    if (!file) return
+    event.preventDefault()
+    void embedImageFile(file)
   }
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1223,6 +1710,12 @@ function App() {
       setEditorValue(`${markdown.slice(0, start)}  ${markdown.slice(end)}`, start + 2, start + 2)
       return
     }
+    if (event.key === 'Escape' && findPanel !== 'closed') {
+      event.preventDefault()
+      setFindPanel('closed')
+      editorRef.current?.focus()
+      return
+    }
     if (!modifier) return
 
     const key = event.key.toLowerCase()
@@ -1232,6 +1725,9 @@ function App() {
     else if (key === 'i') { event.preventDefault(); applyFormat('italic') }
     else if (key === 'k') { event.preventDefault(); applyFormat('link') }
     else if (key === 'e' && !event.shiftKey) { event.preventDefault(); applyFormat('code') }
+    else if (key === 'f') { event.preventDefault(); openFindPanel('find') }
+    else if (key === 'h') { event.preventDefault(); openFindPanel('replace') }
+    else if (key === 'n' && event.altKey) { event.preventDefault(); createDoc() }
     else if (key === 's' && event.shiftKey) { event.preventDefault(); downloadMarkdown() }
     else if (key === 'o') { event.preventDefault(); fileInputRef.current?.click() }
     else if (key === 'e' && event.shiftKey) { event.preventDefault(); setExportOpen(true) }
@@ -1314,6 +1810,14 @@ function App() {
         </nav>
 
         <div className="header-actions">
+          <button
+            className={`quiet-button ${docsOpen ? 'active' : ''}`}
+            onClick={() => setDocsOpen(!docsOpen)}
+            title="Documents"
+            aria-expanded={docsOpen}
+          >
+            <Files size={16} /><span>Documents</span>
+          </button>
           <button className="quiet-button" onClick={() => fileInputRef.current?.click()} title={`Open file (${isMac ? '⌘O' : 'Ctrl+O'})`}>
             <FolderOpen size={16} /><span>Open</span>
           </button>
@@ -1377,14 +1881,27 @@ function App() {
           <i />
           <span>{stats.minutes} min read</span>
           <span className={`save-indicator ${saveState}`}>
-            <b /> {saveState === 'saved' ? 'Saved' : 'Saving'}
+            <b /> {saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Not saved' : 'Saving'}
           </span>
         </div>
       </div>
 
       <main className={`workspace mode-${viewMode}`}>
         <section className="editor-pane" aria-label="Markdown editor">
-          <div className="pane-label"><span>Markdown</span><span>UTF-8</span></div>
+          <div className="pane-label">
+            <span>Markdown</span>
+            <span className="pane-label-actions">
+              <button
+                className="pane-tool"
+                onClick={() => (findPanel === 'closed' ? openFindPanel('find') : setFindPanel('closed'))}
+                aria-label="Find in document"
+                title={`Find (${isMac ? '⌘F' : 'Ctrl+F'})`}
+              >
+                <Search size={12} />
+              </button>
+              <span>UTF-8</span>
+            </span>
+          </div>
           <div className="editor-wrap">
             {!markdown && (
               <div className="editor-empty" aria-hidden="true">
@@ -1393,12 +1910,56 @@ function App() {
                 <span>or drop a Markdown file anywhere</span>
               </div>
             )}
+            {findPanel !== 'closed' && (
+              <div className="find-panel" role="search" aria-label={findPanel === 'replace' ? 'Find and replace' : 'Find'}>
+                <div className="find-row">
+                  <input
+                    ref={findInputRef}
+                    value={findQuery}
+                    onChange={(event) => { setFindQuery(event.target.value); setMatchIndex(0) }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') { event.preventDefault(); gotoMatch(event.shiftKey ? -1 : 1) }
+                    }}
+                    placeholder="Find"
+                    aria-label="Find text"
+                  />
+                  <span className="find-count" aria-live="polite">
+                    {findQuery ? `${matches.length === 0 ? 0 : safeMatchIndex + 1}/${matches.length}` : ''}
+                  </span>
+                  <button onClick={() => gotoMatch(-1)} aria-label="Previous match" disabled={matches.length === 0}>↑</button>
+                  <button onClick={() => gotoMatch(1)} aria-label="Next match" disabled={matches.length === 0}>↓</button>
+                  <button
+                    className={matchCase ? 'on' : ''}
+                    onClick={() => { setMatchCase(!matchCase); setMatchIndex(0) }}
+                    aria-label="Match case"
+                    aria-pressed={matchCase}
+                    title="Match case"
+                  >
+                    Aa
+                  </button>
+                  <button onClick={() => setFindPanel('closed')} aria-label="Close find panel"><X size={13} /></button>
+                </div>
+                {findPanel === 'replace' && (
+                  <div className="find-row">
+                    <input
+                      value={replaceWith}
+                      onChange={(event) => setReplaceWith(event.target.value)}
+                      placeholder="Replace with"
+                      aria-label="Replace with"
+                    />
+                    <button onClick={replaceCurrent} disabled={matches.length === 0} title="Replace current match">Replace</button>
+                    <button onClick={replaceAll} disabled={matches.length === 0} title="Replace every match">All</button>
+                  </div>
+                )}
+              </div>
+            )}
             <textarea
               ref={editorRef}
               value={markdown}
               onChange={(event) => setEditor({ type: 'UPDATE', markdown: event.target.value })}
               onScroll={handleEditorScroll}
               onKeyDown={handleEditorKeyDown}
+              onPaste={handleEditorPaste}
               spellCheck="true"
               autoCapitalize="sentences"
               aria-label="Markdown content"
@@ -1486,11 +2047,77 @@ function App() {
             <dt>Italic</dt><dd>{isMac ? '⌘ I' : 'Ctrl+I'}</dd>
             <dt>Link</dt><dd>{isMac ? '⌘ K' : 'Ctrl+K'}</dd>
             <dt>Inline code</dt><dd>{isMac ? '⌘ E' : 'Ctrl+E'}</dd>
+            <dt>Find</dt><dd>{isMac ? '⌘ F' : 'Ctrl+F'}</dd>
+            <dt>Find &amp; replace</dt><dd>{isMac ? '⌘ H' : 'Ctrl+H'}</dd>
+            <dt>New document</dt><dd>{isMac ? '⌘ ⌥ N' : 'Ctrl+Alt+N'}</dd>
             <dt>Open file</dt><dd>{isMac ? '⌘ O' : 'Ctrl+O'}</dd>
             <dt>Save Markdown</dt><dd>{isMac ? '⌘ ⇧ S' : 'Ctrl+Shift+S'}</dd>
             <dt>Export studio</dt><dd>{isMac ? '⌘ ⇧ E' : 'Ctrl+Shift+E'}</dd>
           </dl>
         </div>
+      )}
+
+      {docsOpen && (
+        <>
+          <button
+            className="docs-backdrop"
+            aria-label="Close documents"
+            onClick={() => setDocsOpen(false)}
+          />
+          <div className="docs-popover" role="dialog" aria-label="Documents">
+            <div className="docs-head">
+              <strong>Documents</strong>
+              <span className="docs-count">{library.docs.length}/{MAX_LIBRARY_DOCS}</span>
+              <button className="docs-new" onClick={createDoc}>
+                <FilePlus2 size={13} /> New
+              </button>
+            </div>
+            <ul className="docs-list">
+              {[...library.docs]
+                .sort((a, b) => (b.id === activeId ? 1 : 0) - (a.id === activeId ? 1 : 0) || b.updatedAt - a.updatedAt)
+                .map((doc) => {
+                  const isActive = doc.id === activeId
+                  return (
+                    <li key={doc.id} className={isActive ? 'active' : ''}>
+                      <button className="docs-row" onClick={() => switchDoc(doc.id)} title={doc.title}>
+                        <FileText size={14} />
+                        <span className="docs-title">{doc.title || 'Untitled document'}{isActive ? ' · open' : ''}</span>
+                        <span className="docs-time">{relativeTime(doc.updatedAt)}</span>
+                      </button>
+                      <button
+                        className="docs-action"
+                        aria-label={`Duplicate ${doc.title}`}
+                        title="Duplicate"
+                        onClick={() => duplicateDoc(doc.id)}
+                      >
+                        <Copy size={13} />
+                      </button>
+                      {deleteArmId === doc.id ? (
+                        <button
+                          className="docs-action confirm"
+                          aria-label={`Confirm delete ${doc.title}`}
+                          title="Confirm delete"
+                          onClick={() => deleteDoc(doc.id)}
+                        >
+                          <Trash2 size={13} /> Sure?
+                        </button>
+                      ) : (
+                        <button
+                          className="docs-action"
+                          aria-label={`Delete ${doc.title}`}
+                          title="Delete"
+                          onClick={() => setDeleteArmId(doc.id)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
+            </ul>
+            <p className="docs-foot">Documents live only in this browser.</p>
+          </div>
+        </>
       )}
 
       <ExportStudio

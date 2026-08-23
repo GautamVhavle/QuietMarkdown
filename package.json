@@ -1,8 +1,38 @@
 {
   "name": "quietmarkdown",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
+  "description": "A private, local-first Markdown editor with real-time Mermaid diagrams and a watermark-first export studio (PDF, HTML, PNG pages).",
+  "keywords": [
+    "markdown",
+    "markdown-editor",
+    "mermaid",
+    "diagrams",
+    "local-first",
+    "offline",
+    "pwa",
+    "pdf-export",
+    "export",
+    "privacy",
+    "writing"
+  ],
+  "homepage": "https://quietmarkdown.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GautamVhavle/QuietMarkdown.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GautamVhavle/QuietMarkdown/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Gautam Vhavle",
+    "url": "https://gautamvhavle.xyz/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "assets:generate": "node scripts/generate-brand-assets.mjs",

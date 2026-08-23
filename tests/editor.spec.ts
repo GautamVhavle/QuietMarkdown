@@ -125,8 +125,13 @@ test('opens a local Markdown file', async ({ page }, testInfo) => {
 
 test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'File integrity is covered once on desktop.')
-  await page.getByLabel('Markdown content').fill('# Export proof\n\nA short document for file verification.')
+  await page.getByLabel('Markdown content').fill(
+    '# Export proof\n\nA short document for file verification.\n\n```mermaid\ngraph TD\n  A[Alpha] --> B[Beta]\n```\n',
+  )
   await page.getByRole('button', { name: 'Open export studio' }).click()
+
+  // The capture surface must hold a rendered diagram before exporting.
+  await expect(page.locator('.capture-host .mermaid svg')).toHaveCount(1)
 
   const htmlDownloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: /Download HTML/ }).click()
@@ -136,6 +141,9 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   const html = await readFile(htmlPath, 'utf8')
   expect(htmlDownload.suggestedFilename()).toMatch(/\.html$/)
   expect(html).toContain('<h1>Export proof</h1>')
+  // The diagram must ship as a self-contained rendered image, not a placeholder.
+  expect(html).toContain('data:image/svg+xml')
+  expect(html).not.toContain('class="mermaid" data-mermaid=')
   expect(html).not.toContain('watermark')
   expect(html).not.toContain('quietmarkdown.vercel.app')
 
@@ -195,4 +203,155 @@ test('updates Mermaid diagrams when their source changes', async ({ page }) => {
 
   await expect(diagram.locator('svg')).toHaveCount(1)
   await expect(diagram.locator('svg')).toContainText('Share with clarity')
+})
+
+test('renders Mermaid diagrams live character by character', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Live typing needs the split view.')
+  const editor = page.getByLabel('Markdown content')
+  const diagram = page.locator('.markdown-body .mermaid').first()
+  await editor.fill('')
+  await editor.focus()
+
+  // An unterminated fence still renders — diagrams appear before the closing ```
+  await editor.pressSequentially('```mermaid\ngraph TD')
+  await expect(diagram.locator('svg')).toHaveCount(1)
+
+  await editor.pressSequentially('\n  A[Alpha] --> B[Beta]')
+  await expect(diagram.locator('svg')).toContainText('Beta')
+
+  await editor.pressSequentially('\n  B --> C[Gamma]')
+  await expect(diagram.locator('svg')).toContainText('Gamma')
+})
+
+test('keeps the last good Mermaid frame while the syntax is invalid, then recovers', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Live typing needs the split view.')
+  const editor = page.getByLabel('Markdown content')
+  const diagram = page.locator('.markdown-body .mermaid').first()
+  await editor.fill('')
+  await editor.focus()
+
+  await editor.pressSequentially('```mermaid\ngraph TD\n  A[Alpha] --> B[Beta]')
+  await expect(diagram.locator('svg')).toContainText('Beta')
+
+  // Break the syntax mid-edit (unclosed bracket)…
+  await editor.pressSequentially('\n  C[Oops --> D[Dangling]')
+  await expect(diagram.locator('.mermaid-note')).toBeVisible()
+  // …the previous good diagram must stay on screen, not flash an error box.
+  await expect(diagram.locator('svg')).toHaveCount(1)
+  await expect(diagram.locator('svg')).toContainText('Beta')
+
+  // Remove the broken line — the diagram recovers without a reload.
+  for (let index = 0; index < '\n  C[Oops --> D[Dangling]'.length; index += 1) {
+    await editor.press('Backspace')
+  }
+  await expect(diagram.locator('.mermaid-note')).toHaveCount(0)
+  await expect(diagram.locator('svg')).toContainText('Beta')
+})
+
+test('renders multiple Mermaid diagrams and caches untouched ones', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Split view keeps both panes visible.')
+  const editor = page.getByLabel('Markdown content')
+  const diagrams = page.locator('.markdown-body .mermaid')
+
+  const source = await editor.inputValue()
+  await editor.fill(`${source}\n\n\`\`\`mermaid\npie title Snack votes\n  "Apples" : 42\n  "Bananas" : 27\n\`\`\`\n`)
+  await expect(diagrams).toHaveCount(2)
+  await expect(page.locator('.markdown-body .mermaid svg')).toHaveCount(2)
+  await expect(diagrams.nth(1)).toContainText('Apples')
+
+  // Editing the first diagram must not disturb the second.
+  const docWithPie = await editor.inputValue()
+  const secondSvgBefore = await diagrams.nth(1).locator('svg').innerHTML()
+  await editor.fill(docWithPie.replace('Share with confidence', 'Share with certainty'))
+  await expect(diagrams.nth(0).locator('svg')).toContainText('Share with certainty')
+  await expect(diagrams).toHaveCount(2)
+  await expect(diagrams.nth(1)).toContainText('Apples')
+  expect(await diagrams.nth(1).locator('svg').innerHTML()).toBe(secondSvgBefore)
+})
+
+test('creates, switches between, and deletes documents in the library', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'library popover is a desktop workflow')
+  const documents = page.getByRole('button', { name: 'Documents' })
+  await documents.click()
+  await expect(page.locator('.docs-popover')).toBeVisible()
+  await page.getByRole('button', { name: /New/ }).click()
+  await expect(page.getByLabel('Document title')).toHaveValue('Untitled document')
+
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill('# Second note\n\nLibrary content.')
+  await page.waitForTimeout(700)
+
+  // Switch back to the field guide and confirm content follows.
+  await documents.click()
+  const rows = page.locator('.docs-list li')
+  await expect(rows).toHaveCount(2)
+  await rows.filter({ hasText: 'QuietMarkdown editor field guide' }).locator('.docs-row').click()
+  await expect(page.locator('.markdown-body h1').first()).toContainText('QuietMarkdown editor field guide')
+
+  // Reload: the active document survives.
+  await page.reload()
+  await expect(page.getByLabel('Document title')).toHaveValue(/QuietMarkdown editor/)
+
+  // Switch to the second doc, then delete it (two-step confirm).
+  await documents.click()
+  await rows.filter({ hasText: 'Untitled document' }).locator('.docs-row').click()
+  await expect(editor).toHaveValue(/Second note/)
+  await documents.click()
+  await rows.filter({ hasText: 'Untitled document' }).getByTitle('Delete').click()
+  await rows.filter({ hasText: 'Untitled document' }).getByTitle('Confirm delete').click()
+  await expect(rows).toHaveCount(1)
+})
+
+test('finds and replaces text across the document', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chromium', 'find panel is tuned for larger viewports')
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill('# Alpha report\n\nThe alpha team wrote about alpha ideas.')
+
+  await page.getByRole('button', { name: 'Find in document' }).click()
+  const findInput = page.getByLabel('Find text')
+  await findInput.fill('alpha')
+  await expect(page.locator('.find-count')).toHaveText('1/3')
+  await findInput.press('Enter')
+  await findInput.press('Enter')
+  await expect(page.locator('.find-count')).toHaveText('3/3')
+
+  // Case-sensitive matching only counts exact-case hits.
+  await page.getByRole('button', { name: 'Match case' }).click()
+  await expect(page.locator('.find-count')).toHaveText('1/2')
+  await page.getByRole('button', { name: 'Match case' }).click()
+  await expect(page.locator('.find-count')).toHaveText('1/3')
+
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.find-panel')).toHaveCount(0)
+
+  // Replace-all flow via ⌘H/Ctrl+H.
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+h' : 'Control+h')
+  await page.getByLabel('Find text').fill('alpha')
+  await page.getByLabel('Replace with').fill('omega')
+  await page.getByRole('button', { name: 'All', exact: true }).click()
+  await expect(editor).toHaveValue(/The omega team wrote about omega ideas\./)
+})
+
+test('embeds pasted images as local data URLs', async ({ page }) => {
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill('# With picture\n\n')
+  await editor.focus()
+  await editor.evaluate((element) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 32
+    canvas.height = 24
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#d85b3f'
+    context.fillRect(0, 0, 32, 24)
+    canvas.toBlob((blob) => {
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([blob!], 'snapshot.png', { type: 'image/png' }))
+      element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }))
+    }, 'image/png')
+  })
+  await expect(editor).toHaveValue(/!\[snapshot\]\(data:image\/png/, { timeout: 5000 })
+  if (await page.getByRole('button', { name: 'Preview' }).isVisible()) {
+    await expect(page.locator('.markdown-body img[src^="data:image"]')).toHaveCount(1)
+  }
 })
