@@ -1,0 +1,21 @@
+# QuietMarkdown
+
+> A free, private, local-first Markdown editor that runs entirely in the browser: live preview, real-time Mermaid diagrams, a multi-document library, and polished PDF, HTML, and PNG page exports with custom watermarks.
+
+QuietMarkdown never uploads documents. Drafts live in browser storage, the app works offline after the first visit, and Markdown files remain the canonical source of truth.
+
+## Pages
+
+- [Home — the editor](https://quietmarkdown.vercel.app/): full writing workspace and export studio.
+- [Privacy](https://quietmarkdown.vercel.app/privacy): what is (and is not) stored or transmitted.
+
+## Facts
+
+- Open source (MIT): https://github.com/GautamVhavle/QuietMarkdown
+- Author: Gautam Vhavle — https://gautamvhavle.xyz/
+- No accounts, no analytics, no server-side processing of document content.
+- Exports: PDF (multipage, watermarked), standalone HTML, 2× PNG pages (ZIP).
+
+## Suggested citation
+
+QuietMarkdown by Gautam Vhavle — https://quietmarkdown.vercel.app/

@@ -424,6 +424,11 @@ export async function initMermaid(
   mermaidContainerThemes.set(container, theme)
   if (options.watch !== false) watchMermaidContainer(container)
 
+  // Documents without diagrams never pay for the (large) Mermaid chunk.
+  const slots = Array.from(container.querySelectorAll<HTMLElement>('[data-mermaid]'))
+    .filter((element) => !element.classList.contains('mermaid-invalid'))
+  if (slots.length === 0) return
+
   let mermaid: MermaidApi
   try {
     mermaid = await loadMermaid()

@@ -88,6 +88,17 @@ Watermarks are part of the PDF and PNG experience, not an afterthought. Control 
 
 A service worker caches the application shell after your first visit, so QuietMarkdown opens and keeps working without a network connection. Drafts live in browser storage either way.
 
+### Built to be found
+
+Technical SEO is treated as a product feature:
+
+- The starter field guide is **prerendered into the served HTML**, so crawlers that never execute JavaScript index real content with proper heading hierarchy
+- Structured data (`SoftwareApplication`, `WebSite`, `FAQPage`) for rich results
+- Keyword-first title/description within SERP length limits, self-referencing canonicals, absolute Open Graph/Twitter images
+- `sitemap.xml`, `robots.txt`, `llms.txt` for AI crawlers, HSTS, and a strict CSP validated against the production bundle
+- Lighthouse: **100 SEO · 100 Accessibility · 100 Best Practices**
+- A dedicated Playwright suite (`tests/seo.spec.ts`) asserts the crawler view on every CI run
+
 ## Quick start
 
 ### Prerequisites

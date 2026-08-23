@@ -54,7 +54,8 @@ test('synchronizes editor and preview scrolling in split view', async ({ page },
 })
 
 test('publishes search metadata and accessible creator attribution', async ({ page }) => {
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Markdown privately/)
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /free, private Markdown editor/)
+  expect(await page.title()).toMatch(/Free Online Markdown Editor/)
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://quietmarkdown.vercel.app/og-image.png')
   await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'en_US')
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
