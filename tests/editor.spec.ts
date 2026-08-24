@@ -376,7 +376,7 @@ test('welcomes first-time visitors with a skippable tour', async ({ page }, test
   // Every scene renders its teaching visual.
   await expect(page.locator('.mini-pane')).toHaveCount(2)
   await page.locator('.welcome-next').click()
-  await expect(page.locator('.privacy-seal > svg')).toBeVisible()
+  await expect(page.locator('.seal-panel > svg')).toBeVisible()
   await page.locator('.welcome-next').click()
   await expect(page.locator('.capability-tile')).toHaveCount(6)
   await page.locator('.welcome-next').click()

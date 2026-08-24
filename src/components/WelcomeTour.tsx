@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AnimatePresence,
   motion,
@@ -165,11 +165,11 @@ function MiniEditorDemo({ reduced }: SceneProps) {
 
 function PrivacySeal({ reduced }: SceneProps) {
   return (
-    <div className="privacy-seal" aria-hidden="true">
-      <svg viewBox="0 0 220 150" width="240" height="164">
+    <div className="seal-panel" aria-hidden="true">
+      <svg viewBox="0 0 220 138" width="222" height="139">
         {/* dashed boundary of "this browser" */}
         <motion.rect
-          x="18" y="10" width="184" height="130" rx="16"
+          x="18" y="10" width="184" height="112" rx="16"
           fill="none"
           stroke="var(--accent)"
           strokeWidth="1.6"
@@ -178,7 +178,6 @@ function PrivacySeal({ reduced }: SceneProps) {
           animate={{ pathLength: 1, opacity: 0.75 }}
           transition={{ duration: 1.4, ease: 'easeInOut' }}
         />
-        <text x="110" y="146" textAnchor="middle" className="seal-caption">this browser</text>
 
         {/* the document */}
         <motion.g
@@ -186,11 +185,11 @@ function PrivacySeal({ reduced }: SceneProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
         >
-          <rect x="82" y="38" width="56" height="66" rx="8" fill="var(--surface-solid)" stroke="var(--ink-faint)" strokeWidth="1.4" />
-          <rect x="90" y="50" width="40" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".55" />
-          <rect x="90" y="61" width="32" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".4" />
-          <rect x="90" y="72" width="38" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".4" />
-          <rect x="90" y="83" width="26" height="5" rx="2.5" fill="var(--accent)" opacity=".65" />
+          <rect x="82" y="30" width="56" height="62" rx="8" fill="var(--surface-solid)" stroke="var(--ink-faint)" strokeWidth="1.4" />
+          <rect x="90" y="42" width="40" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".55" />
+          <rect x="90" y="53" width="32" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".4" />
+          <rect x="90" y="64" width="38" height="5" rx="2.5" fill="var(--ink-faint)" opacity=".4" />
+          <rect x="90" y="75" width="26" height="5" rx="2.5" fill="var(--accent)" opacity=".65" />
         </motion.g>
 
         {/* the lock */}
@@ -198,17 +197,25 @@ function PrivacySeal({ reduced }: SceneProps) {
           initial={reduced ? false : { opacity: 0, scale: 0.4 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 260, damping: 16, delay: 1.25 }}
-          style={{ transformOrigin: '110px 104px' }}
+          style={{ transformOrigin: '110px 92px' }}
         >
-          <rect x="98" y="96" width="24" height="19" rx="5" fill="var(--accent)" />
-          <path d="M102 96v-5a8 8 0 0 1 16 0v5" fill="none" stroke="var(--accent)" strokeWidth="3.4" />
+          <rect x="98" y="84" width="24" height="19" rx="5" fill="var(--accent)" />
+          <path d="M102 84v-5a8 8 0 0 1 16 0v5" fill="none" stroke="var(--accent)" strokeWidth="3.4" />
         </motion.g>
       </svg>
+      <motion.span
+        className="seal-caption"
+        initial={reduced ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 1.7 }}
+      >
+        this browser
+      </motion.span>
       <motion.ul
         className="seal-points"
         initial={reduced ? false : 'enter'}
         animate="center"
-        variants={{ center: { transition: { staggerChildren: 0.28, delayChildren: 1.5 } } }}
+        variants={{ center: { transition: { staggerChildren: 0.28, delayChildren: 1.9 } } }}
       >
         {['No account', 'No uploads', 'No analytics'].map((point) => (
           <motion.li key={point} variants={{ enter: { opacity: 0, y: 8 }, center: { opacity: 1, y: 0 } }}>
@@ -231,7 +238,7 @@ function MermaidSpark({ reduced }: SceneProps) {
       : {
           initial: { pathLength: 0, opacity: 0 },
           animate: { pathLength: 1, opacity: 1 },
-          transition: { duration: 0.7, delay, repeat: Infinity, repeatType: 'loop' as const, repeatDelay: 2.6 - delay },
+          transition: { duration: 0.7, delay, repeat: Infinity, repeatType: 'loop' as const, repeatDelay: 2.4 },
         }
 
   const pop = (delay: number) =>
@@ -240,7 +247,7 @@ function MermaidSpark({ reduced }: SceneProps) {
       : {
           initial: { opacity: 0, scale: 0.5 },
           animate: { opacity: 1, scale: 1 },
-          transition: { type: 'spring' as const, stiffness: 300, damping: 17, delay, repeat: Infinity, repeatType: 'loop' as const, repeatDelay: 2.6 - delay },
+          transition: { duration: 0.55, delay, ease: EASE_OUT, repeat: Infinity, repeatType: 'loop' as const, repeatDelay: 2.55 },
         }
 
   return (
@@ -338,11 +345,11 @@ function ExportFan({ reduced }: SceneProps) {
           <FileText size={20} />
           <strong>{card.label}</strong>
           <span>{card.note}</span>
-          {card.id === 'pdf' && !reduced && (
+          {!reduced && (
             <motion.span
               className="watermark-sweep"
-              animate={{ x: [-58, 58] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.2 }}
+              animate={{ x: [-62, 62] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.9 + index * 0.45, repeatDelay: 1.6 }}
             />
           )}
         </motion.div>
@@ -362,6 +369,12 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
   const [direction, setDirection] = useState(1)
   const reduced = Boolean(useReducedMotion())
   const isLast = scene === SCENE_COUNT - 1
+  const nextRef = useRef<HTMLButtonElement>(null)
+
+  // Keyboard entry point: the footer persists across scenes, so focus stays.
+  useEffect(() => {
+    nextRef.current?.focus({ preventScroll: true })
+  }, [])
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -471,7 +484,7 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
               />
             ))}
           </div>
-          <button className="primary-button welcome-next" onClick={goNext}>
+          <button ref={nextRef} className="primary-button welcome-next" onClick={goNext}>
             {isLast ? <>Start writing <Check size={15} /></> : <>Next <ArrowRight size={15} /></>}
           </button>
         </footer>
