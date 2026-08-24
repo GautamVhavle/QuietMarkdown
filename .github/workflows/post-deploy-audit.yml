@@ -39,10 +39,17 @@ jobs:
         run: npm ci
 
       - name: Trigger Vercel production deploy
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
-        run: npx vercel deploy --prod --yes --token="${{ secrets.VERCEL_TOKEN }}"
+        # secrets are not readable in step-level if:, so the presence
+        # check happens here in shell instead.
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           GIT_SHA: ${{ env.EXPECTED_SHA }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "No VERCEL_TOKEN secret configured - relying on Vercel's own git-integration deploy."
+            exit 0
+          fi
+          npx vercel deploy --prod --yes --token="$VERCEL_TOKEN"
 
       - name: Wait for production to serve this commit
         run: |
