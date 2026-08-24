@@ -105,7 +105,15 @@ jobs:
               console.error(\`\${cat} scored \${scores[cat]}, below \${min}. Failing audits:\`);
               for (const ref of r.categories[cat].auditRefs || []) {
                 const a = r.audits[ref.id];
-                if (a && a.score !== null && a.score < 1) console.error(\` - \${ref.id}: \${a.title} (score \${a.score})\`);
+                if (!a || a.score === null || a.score >= 1) continue;
+                console.error(\` - \${ref.id}: \${a.title} (score \${a.score})\`);
+                for (const item of (a.details && a.details.items) || []) {
+                  const n = item.node || {};
+                  console.error(\`     node: \${(n.selector || '').slice(0, 100)}\`);
+                  console.error(\`       \${(n.snippet || '').replace(/\\s+/g, ' ').slice(0, 160)}\`);
+                  const d = (n.explanation || '');
+                  if (d) console.error(\`       \${d.replace(/\\s+/g, ' ').slice(0, 200)}\`);
+                }
               }
             }
             process.exit(failed ? 1 : 0);
