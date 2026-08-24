@@ -98,7 +98,15 @@ jobs:
             const r = require('/tmp/lh.json');
             const scores = Object.fromEntries(Object.entries(r.categories).map(([k, c]) => [k, Math.round(c.score * 100)]));
             console.log('Live scores:', scores);
+            let failed = false;
             for (const [cat, min] of [['seo', 100], ['accessibility', 100], ['best-practices', 90]]) {
-              if (scores[cat] < min) { console.error(\`\${cat} scored \${scores[cat]}, below \${min}\`); process.exit(1); }
+              if (scores[cat] >= min) continue;
+              failed = true;
+              console.error(\`\${cat} scored \${scores[cat]}, below \${min}. Failing audits:\`);
+              for (const ref of r.categories[cat].auditRefs || []) {
+                const a = r.audits[ref.id];
+                if (a && a.score !== null && a.score < 1) console.error(\` - \${ref.id}: \${a.title} (score \${a.score})\`);
+              }
             }
+            process.exit(failed ? 1 : 0);
           "
