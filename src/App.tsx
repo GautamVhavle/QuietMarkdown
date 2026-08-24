@@ -1894,6 +1894,7 @@ function App() {
             href="https://github.com/GautamVhavle/QuietMarkdown"
             target="_blank"
             rel="noreferrer noopener"
+            aria-label="View on GitHub"
           >
             <GitHubMark size={13} />
             <span>View on GitHub</span>
