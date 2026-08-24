@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://quietmarkdown.vercel.app/"><strong>Open QuietMarkdown</strong></a>
+  <a href="https://quietmark.vercel.app/"><strong>Open QuietMarkdown</strong></a>
   &nbsp;·&nbsp;
   <a href="#features">Features</a>
   &nbsp;·&nbsp;
@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://github.com/GautamVhavle/QuietMarkdown/actions"><img src="https://img.shields.io/github/actions/workflow/status/GautamVhavle/QuietMarkdown/ci.yml?branch=main&style=flat-square&label=checks" alt="Checks" /></a>
   <a href="https://github.com/GautamVhavle/QuietMarkdown/releases"><img src="https://img.shields.io/github/v/release/GautamVhavle/QuietMarkdown?style=flat-square&label=release" alt="Release" /></a>
-  <a href="https://quietmarkdown.vercel.app/"><img src="https://img.shields.io/badge/live-quietmarkdown.vercel.app-242421?style=flat-square" alt="Live site" /></a>
+  <a href="https://quietmark.vercel.app/"><img src="https://img.shields.io/badge/live-quietmark.vercel.app-242421?style=flat-square" alt="Live site" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-d85b3f?style=flat-square" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/privacy-local--first-4f8662?style=flat-square" alt="Local first privacy" />
   <img src="https://img.shields.io/badge/offline-ready-8b6fc4?style=flat-square" alt="Offline ready" />

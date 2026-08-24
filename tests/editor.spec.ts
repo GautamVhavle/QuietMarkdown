@@ -60,7 +60,7 @@ test('synchronizes editor and preview scrolling in split view', async ({ page },
 test('publishes search metadata and accessible creator attribution', async ({ page }) => {
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /free, private Markdown editor/)
   expect(await page.title()).toMatch(/Free Online Markdown Editor/)
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://quietmarkdown.vercel.app/og-image.png')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://quietmark.vercel.app/og-image.png')
   await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'en_US')
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute('href', '/favicon.ico')
@@ -150,7 +150,7 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   expect(html).toContain('data:image/svg+xml')
   expect(html).not.toContain('class="mermaid" data-mermaid=')
   expect(html).not.toContain('watermark')
-  expect(html).not.toContain('quietmarkdown.vercel.app')
+  expect(html).not.toContain('quietmark.vercel.app')
 
   const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
   await page.getByRole('button', { name: /Save as PDF/ }).click()
@@ -191,7 +191,7 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.getByLabel('Page background color')).toHaveValue('#ffffff')
 
   const watermark = page.getByPlaceholder('DRAFT, CONFIDENTIAL…')
-  await expect(watermark).toHaveValue('quietmarkdown.vercel.app')
+  await expect(watermark).toHaveValue('quietmark.vercel.app')
   await watermark.fill('CONFIDENTIAL')
   await page.getByRole('button', { name: 'Tiled' }).click()
   await expect(page.getByRole('dialog').getByText('CONFIDENTIAL').first()).toBeVisible()

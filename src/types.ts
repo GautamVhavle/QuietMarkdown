@@ -48,7 +48,7 @@ export const defaultExportSettings: ExportSettings = {
   background: '#ffffff',
   watermark: {
     enabled: true,
-    text: 'quietmarkdown.vercel.app',
+    text: 'quietmark.vercel.app',
     position: 'bottom-right',
     opacity: 0.1,
     size: 24,

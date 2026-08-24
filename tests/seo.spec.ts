@@ -91,13 +91,13 @@ test('prerenders crawlable body content with a single H1', () => {
 
 test('sitemap lists canonical URLs and robots.txt references it', async ({ request }) => {
   const sitemap = await (await request.get(`${SITE_URL}/sitemap.xml`)).text()
-  expect(sitemap).toContain('<loc>https://quietmarkdown.vercel.app/</loc>')
+  expect(sitemap).toContain('<loc>https://quietmark.vercel.app/</loc>')
   expect(sitemap).toContain('http://www.sitemaps.org/schemas/sitemap/0.9')
 
   const robots = await (await request.get(`${SITE_URL}/robots.txt`)).text()
   expect(robots).toContain('User-agent: *')
   expect(robots).toContain('Allow: /')
-  expect(robots).toContain('Sitemap: https://quietmarkdown.vercel.app/sitemap.xml')
+  expect(robots).toContain('Sitemap: https://quietmark.vercel.app/sitemap.xml')
 })
 
 test('llms.txt index is available for AI crawlers', async ({ request }) => {

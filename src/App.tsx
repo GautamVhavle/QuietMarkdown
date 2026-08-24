@@ -474,7 +474,7 @@ function ExportStudio({
       pdf.setTitle(title || 'Untitled document')
       pdf.setSubject('Created locally with QuietMarkdown')
       pdf.setAuthor('QuietMarkdown')
-      pdf.setCreator('quietmarkdown.vercel.app')
+      pdf.setCreator('quietmark.vercel.app')
       pdf.setProducer('QuietMarkdown')
 
       const hex = settings.watermark.color.replace('#', '')

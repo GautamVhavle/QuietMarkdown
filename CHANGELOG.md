@@ -4,20 +4,33 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ## [Unreleased]
 
+### Planned
+
+- Document folders & tagging within local storage
+
+## [1.1.0] — 2026-02-17
+
 ### Added
 
-- **Document library** — keep many notes in one workspace: create (`⌘/Ctrl+Alt+N`), switch, duplicate, and delete documents from the new header popover. Existing single-document saves migrate automatically.
-- **Find & Replace** — search with match counts, wrap-around navigation, match-case toggle, and replace / replace-all (`⌘/Ctrl+F`, `⌘/Ctrl+H`).
-- **Embedded images** — paste or drop an image into the editor and it is downscaled, optimized, and inserted as a local `data:` URL. No uploads, ever.
-- **Offline support** — a service worker caches the app shell so QuietMarkdown opens without a network connection.
-- **Crash safety** — a React error boundary keeps drafts recoverable if rendering ever fails.
-- **Honest save states** — storage writes are quota-aware; the indicator now shows "Not saved" instead of failing silently when browser storage refuses writes.
-- **Unsaved-changes guard** — closing the tab mid-save now asks for confirmation.
-- Export warnings when a Mermaid diagram could not be updated and kept its last valid frame.
+- **Welcome tour** — four-scene animated introduction (Framer Motion): miniature live-preview demo, privacy seal, capability grid with self-drawing Mermaid spark, export fan. Opens on first visit; the Q logo reopens it anytime.
+- **Document library** — create (`⌘/Ctrl+Alt+N`), switch, duplicate, and delete documents; older single-document saves migrate automatically.
+- **Find & Replace** — match counts, wrap-around navigation, match-case toggle (`⌘/Ctrl+F`, `⌘/Ctrl+H`).
+- **Embedded images** — paste or drop images as locally downscaled data URLs.
+- **Offline support** — service worker caches the app shell (PWA-installable).
+- **Clear page · start fresh** action in the Documents menu with one-step undo restore.
 
 ### Changed
 
-- Very large documents (>30k characters) debounce preview rendering so typing stays smooth.
+- Production site moved to https://quietmark.vercel.app
+- Keyword-first SEO title/description; prerendered crawler content; FAQPage schema; `llms.txt`; HSTS
+- Brand mark unified across favicon.ico, touch icons, OG image, and the app logo
+
+### Fixed
+
+- Editor history duplicated entries after document switches, making undo skip states
+- Mermaid diagrams sliced across PDF pages; oversized diagrams now auto-fit
+- Storage quota failures surfaced honestly ("Not saved") instead of silently breaking autosave
+- CSP violation from the no-js swap script (hash-exempted); Lighthouse Best Practices back to 100
 
 ## [1.0.0] — Initial public release
 
@@ -33,5 +46,6 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 - SEO metadata, Open Graph tags, JSON-LD structured data, PWA manifest
 - Playwright end-to-end suite across desktop, tablet, and mobile viewports
 
-[unreleased]: https://github.com/GautamVhavle/QuietMarkdown/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/GautamVhavle/QuietMarkdown/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/GautamVhavle/QuietMarkdown/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/GautamVhavle/QuietMarkdown/releases/tag/v1.0.0

@@ -5,6 +5,9 @@ import { defineConfig, type Plugin } from 'vite'
 // Deployment fingerprint for CI/CD verification. Vercel builds run inside
 // a real clone, so HEAD resolves there too.
 function resolveBuildSha(): string {
+  // Vercel's git integration exposes this automatically; CLI deploys can
+  // pass GIT_SHA explicitly.
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA
   if (process.env.GIT_SHA) return process.env.GIT_SHA
   try {
     return execSync('git rev-parse HEAD').toString().trim()
@@ -21,7 +24,7 @@ import { starterMarkdown } from './src/lib/starter'
 
 function resolveSiteUrl() {
   const configured = process.env.VITE_SITE_URL
-  const candidate = configured || 'https://quietmarkdown.vercel.app'
+  const candidate = configured || 'https://quietmark.vercel.app'
   return /^https?:\/\//.test(candidate) ? candidate.replace(/\/$/, '') : ''
 }
 
@@ -94,7 +97,7 @@ function seoPlugin(siteUrl: string): Plugin {
       }
       if (!siteUrl) return out
       return out
-        .replaceAll('https://quietmarkdown.vercel.app', siteUrl)
+        .replaceAll('https://quietmark.vercel.app', siteUrl)
         .replaceAll('content="/og-image.png"', `content="${siteUrl}/og-image.png"`)
         .replace(
           '    <script type="application/ld+json">',
