@@ -1,5 +1,17 @@
+import { execSync } from 'node:child_process'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+
+// Deployment fingerprint for CI/CD verification. Vercel builds run inside
+// a real clone, so HEAD resolves there too.
+function resolveBuildSha(): string {
+  if (process.env.GIT_SHA) return process.env.GIT_SHA
+  try {
+    return execSync('git rev-parse HEAD').toString().trim()
+  } catch {
+    return 'unknown-build'
+  }
+}
 
 // Rendered once at config-load time. markdown-it is CommonJS; the default
 // interop import works both in the bundled dev config and the production build.
@@ -55,7 +67,13 @@ function seoPlugin(siteUrl: string): Plugin {
   return {
     name: 'quietmarkdown-seo',
     transformIndexHtml(html) {
-      let out = html
+      // Deployment fingerprint: CI/CD reads this off the live site to prove
+      // the running build matches the pushed commit.
+      const buildSha = resolveBuildSha()
+      let out = html.replace(
+        '</head>',
+        `    <meta name="x-build-sha" content="${buildSha}" />\n  </head>`,
+      )
       if (starterHtml) {
         out = out
           // The swap must happen in <head>, before first paint, so visitors
