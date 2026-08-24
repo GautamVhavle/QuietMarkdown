@@ -88,10 +88,12 @@ jobs:
 
       - name: Lighthouse SEO audit of production
         run: |
+          CHROME_PATH="$(find ~/.cache/ms-playwright -type f -name chrome -path '*chrome-linux*' | head -1)"
+          echo "Lighthouse Chromium: $CHROME_PATH"
           npx --yes lighthouse "$PROD_URL" \
             --only-categories=seo,accessibility,best-practices \
             --output=json --output-path=/tmp/lh.json \
-            --chrome-flags="--headless=new --no-sandbox" --quiet
+            --chrome-flags="--headless --no-sandbox" --quiet
           node -e "
             const r = require('/tmp/lh.json');
             const scores = Object.fromEntries(Object.entries(r.categories).map(([k, c]) => [k, Math.round(c.score * 100)]));
