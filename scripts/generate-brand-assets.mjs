@@ -1,12 +1,18 @@
+import { writeFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage({ deviceScaleFactor: 1 })
 
+// Identical geometry to public/favicon.svg and the .brand-mark UI tile:
+// full-bleed ink square, asymmetric bottom-right corner (9px/3px on the
+// 28px UI tile, scaled x2.2857 for the 64-unit viewBox).
+const MARK_PATH =
+  'M20.6 0h22.8A20.6 20.6 0 0 1 64 20.6v36.5A6.9 6.9 0 0 1 57.1 64H20.6A20.6 20.6 0 0 1 0 43.4V20.6A20.6 20.6 0 0 1 20.6 0Z'
 const mark = `
   <svg viewBox="0 0 64 64" aria-hidden="true">
-    <rect x="3" y="3" width="58" height="58" rx="11" fill="#242421"/>
-    <text x="32" y="44" text-anchor="middle" fill="#fffefa" font-family="Georgia, 'Times New Roman', serif" font-size="43" font-weight="600">Q</text>
+    <path d="${MARK_PATH}" fill="#242421"/>
+    <text x="32" y="45" text-anchor="middle" fill="#fffefa" font-family="'Newsreader', Georgia, 'Times New Roman', serif" font-size="39" font-weight="600">Q</text>
   </svg>`
 
 for (const [size, filename] of [
@@ -32,6 +38,43 @@ await page.setContent(`<!doctype html>
   p{margin:24px 0 0;color:#68665f;font-size:21px;line-height:1.45}.footer{position:absolute;bottom:57px;left:88px;color:#8a8880;font-size:15px;letter-spacing:.01em}
 </style></head><body><main class="canvas"><section class="content"><div class="brand">${mark}<span>QuietMarkdown</span></div><div class="pill"><i class="dot"></i>Private by design</div><h1>Write quietly.<br/><em>Export beautifully.</em></h1><p>A fast, local Markdown editor with considered typography<br/>and customizable watermarks.</p></section><div class="paper-lines"></div><div class="footer">Markdown · PDF · HTML · PNG</div></main></body></html>`)
 await page.screenshot({ path: 'public/og-image.png' })
+
+// favicon.ico — three PNG-embedded entries rendered from the same mark so
+// Safari and direct /favicon.ico requests stay identical to the app logo.
+const icoPngs = {}
+for (const size of [16, 32, 48]) {
+  const b64 = await page.evaluate(async ({ svg, size }) => {
+    const img = new Image()
+    const url = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`
+    await new Promise((resolve) => { img.onload = resolve; img.src = url })
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    canvas.getContext('2d').drawImage(img, 0, 0, size, size)
+    return canvas.toDataURL('image/png').split(',')[1]
+  }, { svg: mark, size })
+  icoPngs[size] = Buffer.from(b64, 'base64')
+}
+const entries16 = Buffer.alloc(6)
+entries16.writeUInt16LE(0, 0)
+entries16.writeUInt16LE(1, 2)
+entries16.writeUInt16LE(3, 4)
+let cursor = 6 + 3 * 16
+const dirents = [16, 32, 48].map((size) => {
+  const entry = Buffer.alloc(16)
+  entry[0] = size
+  entry[1] = size
+  entry.writeUInt16LE(1, 4)
+  entry.writeUInt16LE(32, 6)
+  entry.writeUInt32LE(icoPngs[size].length, 8)
+  entry.writeUInt32LE(cursor, 12)
+  cursor += icoPngs[size].length
+  return entry
+})
+writeFileSync(
+  'public/favicon.ico',
+  Buffer.concat([entries16, ...dirents, icoPngs[16], icoPngs[32], icoPngs[48]]),
+)
 
 await browser.close()
 console.log('Generated QuietMarkdown icon and social assets.')

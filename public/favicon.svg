@@ -1,4 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="QuietMarkdown">
-  <rect x="3" y="3" width="58" height="58" rx="11" fill="#242421"/>
-  <text x="32" y="44" text-anchor="middle" fill="#fffefa" font-family="Georgia, 'Times New Roman', serif" font-size="43" font-weight="600">Q</text>
+  <!-- Mirrors the in-app brand mark: full-bleed ink tile with the
+       signature asymmetric bottom-right corner (radii scaled from the
+       UI mark's 9px/3px on a 28px tile). -->
+  <path d="M20.6 0h22.8A20.6 20.6 0 0 1 64 20.6v36.5A6.9 6.9 0 0 1 57.1 64H20.6A20.6 20.6 0 0 1 0 43.4V20.6A20.6 20.6 0 0 1 20.6 0Z" fill="#242421"/>
+  <text x="32" y="45" text-anchor="middle" fill="#fffefa" font-family="'Newsreader', Georgia, 'Times New Roman', serif" font-size="39" font-weight="600">Q</text>
 </svg>

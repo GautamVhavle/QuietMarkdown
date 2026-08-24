@@ -401,3 +401,20 @@ test('welcomes first-time visitors with a skippable tour', async ({ page }, test
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
 })
+
+test('clears the page from the documents menu with an undo safety net', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'documents popover is a desktop workflow')
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill('# Draft to discard\n\nWords worth wiping.')
+
+  await page.getByRole('button', { name: 'Documents' }).click()
+  await page.getByRole('button', { name: /Clear page · start fresh/ }).click()
+
+  await expect(editor).toHaveValue('')
+  await expect(page.getByLabel('Document title')).toHaveValue('Untitled document')
+  await expect(page.locator('.toast')).toContainText(/Page cleared/)
+
+  // Safety net: one undo brings the draft back.
+  await editor.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z')
+  await expect(editor).toHaveValue(/Draft to discard/)
+})

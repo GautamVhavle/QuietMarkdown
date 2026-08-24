@@ -8,6 +8,7 @@ import {
   Columns2,
   Copy,
   Download,
+  Eraser,
   Eye,
   FileDown,
   FilePlus2,
@@ -185,22 +186,24 @@ const MAX_HISTORY = 100
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
+    // Canonical history model: history[i] IS the state at position i and
+    // historyIndex always points at the current entry. UPDATE appends the
+    // new state; UNDO/REDO move the pointer. (The previous model pushed
+    // the outgoing text instead, which duplicated entries after every
+    // RESET and made a single undo skip states.)
     case 'UPDATE': {
-      const current = state.markdown
-      if (action.markdown === current) return state
-      const newHistory = state.history.slice(0, state.historyIndex + 1)
-      newHistory.push(current)
-      if (newHistory.length > MAX_HISTORY) newHistory.shift()
+      if (action.markdown === state.markdown) return state
+      const history = [...state.history.slice(0, state.historyIndex + 1), action.markdown]
+      const trimmed = history.slice(-MAX_HISTORY)
       return {
         markdown: action.markdown,
-        history: newHistory,
-        historyIndex: newHistory.length - 1,
+        history: trimmed,
+        historyIndex: trimmed.length - 1,
       }
     }
     case 'UNDO': {
-      if (state.historyIndex < 0) return state
+      if (state.historyIndex <= 0) return state
       const newIndex = state.historyIndex - 1
-      if (newIndex < 0) return state
       return {
         ...state,
         markdown: state.history[newIndex],
@@ -208,16 +211,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       }
     }
     case 'REDO': {
+      if (state.historyIndex >= state.history.length - 1) return state
       const newIndex = state.historyIndex + 1
-      if (newIndex >= state.history.length - 1) {
-        // Reached the last known state — the markdown itself is the tip
-        if (newIndex >= state.history.length) return state
-        return {
-          ...state,
-          markdown: state.history[newIndex],
-          historyIndex: newIndex,
-        }
-      }
       return {
         ...state,
         markdown: state.history[newIndex],
@@ -1308,6 +1303,19 @@ function App() {
     setToast('Document deleted')
   }
 
+  /**
+   * Wipe the active page and begin again. Uses UPDATE (not RESET) so the
+   * previous draft stays one undo away — a destructive action with a
+   * safety net.
+   */
+  const clearActiveDoc = () => {
+    setEditor({ type: 'UPDATE', markdown: '' })
+    setTitle('Untitled document')
+    setDocsOpen(false)
+    setToast(`Page cleared — press ${isMac ? '⌘Z' : 'Ctrl+Z'} to restore`)
+    requestAnimationFrame(() => editorRef.current?.focus())
+  }
+
   /* --------------------------- Find & Replace -------------------------- */
 
   type Match = { start: number; end: number }
@@ -1996,6 +2004,12 @@ function App() {
                   )
                 })}
             </ul>
+            <div className="docs-clear-row">
+              <button className="docs-clear" onClick={clearActiveDoc} title="Erase this page and begin anew">
+                <Eraser size={13} />
+                Clear page · start fresh
+              </button>
+            </div>
             <p className="docs-foot">Documents live only in this browser.</p>
           </div>
         </>
