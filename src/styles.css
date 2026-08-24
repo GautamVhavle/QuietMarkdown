@@ -453,7 +453,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .export-studio { display: flex; width: min(1180px, 100%); height: min(820px, 100%); overflow: hidden; flex-direction: column; border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: 18px; background: var(--surface); box-shadow: 0 32px 100px rgba(0,0,0,.34); animation: studio-in .25s cubic-bezier(.22,.9,.35,1) both; }
 @keyframes studio-in { from { transform: translateY(12px) scale(.985); opacity: .5; } }
 .export-header { display: flex; align-items: flex-start; justify-content: space-between; min-height: 88px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
-.eyebrow { gap: 5px; color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+/* accent-ink passes WCAG AA in both themes; raw accent is 3.79:1 on light paper */
+.eyebrow { gap: 5px; color: var(--accent-ink); font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .export-header h2 { margin: 6px 0 0; color: var(--ink); font-family: 'Newsreader', Georgia, serif; font-size: 25px; font-weight: 500; letter-spacing: -.025em; }
 .export-body { display: grid; min-height: 0; flex: 1; grid-template-columns: minmax(460px, .9fr) minmax(440px, 1.1fr); }
 .export-controls { min-height: 0; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); }
