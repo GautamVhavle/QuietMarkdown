@@ -1677,7 +1677,7 @@ function App() {
         >
           <span className="brand-mark">Q</span>
           <span className="brand-name">QuietMarkdown</span>
-          <span className="local-badge"><ShieldCheck size={11} /> Local</span>
+          <span className="local-badge" aria-hidden="true"><ShieldCheck size={11} /> Local</span>
         </button>
 
         <nav className="view-switcher" aria-label="Document view">

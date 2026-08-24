@@ -56,7 +56,7 @@ function SceneFrame({
   return (
     <motion.div variants={stack} initial="enter" animate="center" className="welcome-copy">
       <motion.p variants={rise} className="eyebrow">{eyebrow}</motion.p>
-      <motion.h2 variants={rise}>{title}</motion.h2>
+      <motion.h2 id="welcome-title" variants={rise}>{title}</motion.h2>
       <motion.p variants={rise} className="welcome-lead">{lead}</motion.p>
       {children}
     </motion.div>

@@ -878,9 +878,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 /* Footer */
 .welcome-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px 16px; }
 .welcome-back { padding: 8px 13px; }
-.welcome-dots { display: flex; gap: 6px; }
-.welcome-dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--ink-faint) 42%, transparent); cursor: pointer; transition: width .25s cubic-bezier(.22,.9,.35,1), background .2s ease; }
-.welcome-dot.active { width: 20px; background: var(--accent); }
+.welcome-dots { display: flex; gap: 2px; }
+/* WCAG 2.5.8: clickable target is 24×24; the visible dot is drawn by
+   ::after so the design keeps its 7px pill rhythm. */
+.welcome-dot { position: relative; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 999px; background: transparent; cursor: pointer; }
+.welcome-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; transform: translate(-50%, -50%); border-radius: 999px; background: color-mix(in srgb, var(--ink-faint) 42%, transparent); transition: width .25s cubic-bezier(.22,.9,.35,1), background .2s ease; }
+.welcome-dot.active::after { width: 20px; background: var(--accent); }
 .welcome-next { padding: 8px 14px; }
 
 @media (max-width: 620px) {
