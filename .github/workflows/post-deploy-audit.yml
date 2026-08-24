@@ -54,7 +54,7 @@ jobs:
       - name: Wait for production to serve this commit
         run: |
           for attempt in $(seq 1 45); do
-            SERVED=$(curl -fsSL "$PROD_URL/?audit=$RANDOM" | grep -o 'x-build-sha" content="[a-f0-9]*' | cut -d'"' -f4 || true)
+            SERVED=$(curl -fsSL "$PROD_URL/?audit=$RANDOM" | grep -o 'x-build-sha" content="[a-f0-9]*' | cut -d'"' -f3 || true)
             echo "attempt $attempt: production serves '${SERVED:-nothing}', expecting '$EXPECTED_SHA'"
             if [ "$SERVED" = "$EXPECTED_SHA" ]; then
               echo "Production is serving the pushed commit."
