@@ -68,7 +68,7 @@ test('publishes search metadata and accessible creator attribution', async ({ pa
   const creator = page.getByRole('link', { name: /Gautam Vhavle/ })
   await expect(creator).toBeVisible()
   await expect(creator).toHaveAttribute('href', 'https://gautamvhavle.xyz/')
-  const repository = page.getByRole('link', { name: 'View QuietMarkdown on GitHub' })
+  const repository = page.getByRole('link', { name: 'View on GitHub' })
   await expect(repository).toBeVisible()
   await expect(repository).toHaveAttribute('href', 'https://github.com/GautamVhavle/QuietMarkdown')
   const privacy = page.locator('.footer-privacy')
