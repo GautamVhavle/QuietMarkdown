@@ -1672,10 +1672,9 @@ function App() {
           type="button"
           className="brand"
           onClick={() => setWelcomeOpen(true)}
-          aria-label="About QuietMarkdown"
           title="What is QuietMarkdown?"
         >
-          <span className="brand-mark">Q</span>
+          <span className="brand-mark" aria-hidden="true">Q</span>
           <span className="brand-name">QuietMarkdown</span>
           <span className="local-badge" aria-hidden="true"><ShieldCheck size={11} /> Local</span>
         </button>

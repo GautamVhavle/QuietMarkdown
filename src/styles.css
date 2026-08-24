@@ -11,7 +11,8 @@
   --surface-hover: #ecebe6;
   --ink: #242421;
   --ink-soft: #61615b;
-  --ink-faint: #92918a;
+  /* WCAG AA on paper surfaces (4.5:1); was #92918a at 3.13:1 */
+  --ink-faint: #6f6d66;
   --line: #deddd7;
   --line-soft: #ebeae5;
   --accent: #d85b3f;
@@ -823,7 +824,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .mini-p { margin: 0 0 7px; color: var(--ink-soft); font-size: 11px; line-height: 1.55; animation: rise-in .35s ease both; }
 .mini-p em { font-style: italic; }
 .mini-p strong { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--ink); font-weight: 650; }
-@keyframes rise-in { from { opacity: 0; transform: translateY(5px); } }
+/* transform-only: opacity fades made contrast sampling flaky */
+@keyframes rise-in { from { transform: translateY(5px); } }
 
 /* Privacy seal */
 .privacy-seal { display: flex; flex-direction: column; align-items: center; }
