@@ -54,7 +54,7 @@
     "lucide-react": "latest",
     "markdown-it": "latest",
     "markdown-it-task-lists": "^2.1.1",
-    "mermaid": "^11.17.0",
+    "mermaid": "^11.17.2",
     "pdf-lib": "^1.17.1",
     "react": "latest",
     "react-dom": "latest"
