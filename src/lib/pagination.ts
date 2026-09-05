@@ -1,6 +1,7 @@
 import type { ExportSettings } from '../types'
 import { pageDimensions } from './export'
 
+const HEADINGS = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6'])
 const KEEP_TOGETHER = new Set([
   'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
   'BLOCKQUOTE', 'PRE', 'TABLE', 'HR', 'IMG', 'FIGURE',
@@ -33,16 +34,35 @@ export interface PageSlice {
   elements: HTMLElement[]
 }
 
+export interface PageBoundary {
+  top: number
+  bottom: number
+  /** Source Y from which the rest of this page's content area must be painted over. */
+  blankFrom?: number
+}
+
 interface ElementMetric {
   element: HTMLElement
   top: number
   bottom: number
   height: number
   keepTogether: boolean
+  heading: boolean
+}
+
+interface SplitPoint {
+  /** Last Y that still belongs on the current page (inclusive). */
+  cutAfter: number
+  /** Y where leftover content begins — next page content origin, and mask start. */
+  nextStart: number
+}
+
+function getDocumentRoot(sourceElement: HTMLElement): Element | null {
+  return sourceElement.querySelector('.export-document, .markdown-body')
 }
 
 function getElementMetrics(sourceElement: HTMLElement): ElementMetric[] {
-  const documentElement = sourceElement.querySelector('.export-document')
+  const documentElement = getDocumentRoot(sourceElement)
   if (!documentElement) return []
 
   const sourceRect = sourceElement.getBoundingClientRect()
@@ -55,19 +75,20 @@ function getElementMetrics(sourceElement: HTMLElement): ElementMetric[] {
       bottom: rect.bottom - sourceRect.top,
       height: rect.height,
       keepTogether: isKeepTogether(element),
+      heading: HEADINGS.has(element.tagName),
     }
   })
 }
 
-/**
- * Return the bottoms of the actual rendered text lines in an element. A Range
- * gives us browser line boxes, which is much safer than guessing from a font
- * size or cutting at an arbitrary pixel row.
- */
-function getLineBottoms(element: HTMLElement, sourceElement: HTMLElement): number[] {
+interface LineBox {
+  top: number
+  bottom: number
+}
+
+function getLineBoxes(element: HTMLElement, sourceElement: HTMLElement): LineBox[] {
   const sourceTop = sourceElement.getBoundingClientRect().top
+  const boxes: LineBox[] = []
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
-  const bottoms: number[] = []
   let node = walker.nextNode()
 
   while (node) {
@@ -75,36 +96,107 @@ function getLineBottoms(element: HTMLElement, sourceElement: HTMLElement): numbe
       const range = document.createRange()
       range.selectNodeContents(node)
       for (const rect of Array.from(range.getClientRects())) {
-        if (rect.width > 0 && rect.height > 0) bottoms.push(rect.bottom - sourceTop)
+        if (rect.width > 0 && rect.height > 0) {
+          boxes.push({ top: rect.top - sourceTop, bottom: rect.bottom - sourceTop })
+        }
       }
       range.detach()
     }
     node = walker.nextNode()
   }
 
-  return [...new Set(bottoms.map((bottom) => Math.ceil(bottom)))].sort((a, b) => a - b)
+  boxes.sort((a, b) => a.top - b.top || a.bottom - b.bottom)
+  const merged: LineBox[] = []
+  for (const box of boxes) {
+    const previous = merged[merged.length - 1]
+    if (previous && box.top <= previous.bottom + 1) {
+      previous.bottom = Math.max(previous.bottom, box.bottom)
+      previous.top = Math.min(previous.top, box.top)
+    } else {
+      merged.push({ ...box })
+    }
+  }
+  return merged
 }
 
-function getSafeBreak(element: HTMLElement, sourceElement: HTMLElement, limit: number): number | null {
-  const lineBottoms = getLineBottoms(element, sourceElement)
-  const safeLines = lineBottoms.filter((bottom) => bottom <= limit + 0.5)
-  return safeLines.length > 0 ? safeLines[safeLines.length - 1] : null
+function rowBoxes(rows: Iterable<Element>, sourceTop: number): LineBox[] {
+  const boxes: LineBox[] = []
+  for (const row of rows) {
+    const rect = (row as HTMLElement).getBoundingClientRect()
+    if (rect.height > 0) boxes.push({ top: rect.top - sourceTop, bottom: rect.bottom - sourceTop })
+  }
+  return boxes
+}
+
+/**
+ * Preferred split points: table rows, then list items, then real text line boxes.
+ * Using the *next* box's top as nextStart avoids clipping descenders on the
+ * last line of the current page.
+ */
+function getSplitPoint(element: HTMLElement, sourceElement: HTMLElement, limit: number): SplitPoint | null {
+  const sourceTop = sourceElement.getBoundingClientRect().top
+  let boxes: LineBox[] = []
+
+  if (element.tagName === 'TABLE') {
+    boxes = rowBoxes(element.querySelectorAll('tr'), sourceTop)
+  } else if (element.tagName === 'UL' || element.tagName === 'OL') {
+    boxes = rowBoxes(element.querySelectorAll(':scope > li'), sourceTop)
+  }
+
+  if (boxes.length === 0) boxes = getLineBoxes(element, sourceElement)
+  if (boxes.length === 0) return null
+
+  let last = -1
+  for (let index = 0; index < boxes.length; index += 1) {
+    if (boxes[index].bottom <= limit + 0.5) last = index
+    else break
+  }
+  if (last < 0) return null
+
+  const cutAfter = boxes[last].bottom
+  const nextStart = last + 1 < boxes.length ? Math.max(cutAfter, boxes[last + 1].top) : cutAfter
+  return { cutAfter, nextStart }
+}
+
+/**
+ * Shrink replaced content that is taller or wider than a printable page so
+ * pagination never has to slice through a picture.
+ */
+export function fitReplacedElementsToPage(
+  container: HTMLElement,
+  maxHeight: number,
+  maxWidth: number,
+): number {
+  let fitted = 0
+  const availableHeight = Math.max(80, maxHeight - 8)
+  const availableWidth = Math.max(80, maxWidth - 4)
+  for (const node of Array.from(container.querySelectorAll<HTMLElement>('img, svg'))) {
+    const rect = node.getBoundingClientRect()
+    if (!(rect.width > 0) || !(rect.height > 0)) continue
+    if (rect.height <= availableHeight && rect.width <= availableWidth) continue
+    const scale = Math.min(availableHeight / rect.height, availableWidth / rect.width)
+    node.style.maxWidth = `${Math.floor(rect.width * scale)}px`
+    node.style.maxHeight = `${Math.floor(rect.height * scale)}px`
+    node.style.width = 'auto'
+    node.style.height = 'auto'
+    fitted += 1
+  }
+  return fitted
 }
 
 /**
  * Compute page viewport offsets. Each offset is the top of the source document
- * that should be shown at the top of a physical page. Pages are packed around
- * real element and line boundaries, so text is never clipped halfway through a
- * rendered line just because a fixed page-height boundary happened to land there.
+ * that should be shown at the top of a physical page. Pages pack around real
+ * element, row, and line boundaries so text is never clipped through a glyph.
  *
- * `blankFrom` (optional) marks source Y where the rest of that page's viewport
- * must be painted over: a keep-together block was moved to the next page, and
- * its head would otherwise peek into the current page's lower content area.
+ * `blankFrom` marks source Y where the rest of that page's viewport must be
+ * painted over: leftover content of a split block, or a keep-together block
+ * that was moved to the next page.
  */
 export function computePageBoundaries(
   sourceElement: HTMLElement,
   settings: ExportSettings,
-): { top: number; bottom: number; blankFrom?: number }[] {
+): PageBoundary[] {
   const dimensions = pageDimensions[settings.paper]
   const pageHeight = dimensions.height
   const margin = settings.margin
@@ -113,54 +205,61 @@ export function computePageBoundaries(
 
   if (metrics.length === 0) return [{ top: 0, bottom: pageHeight }]
 
-  const boundaries: { top: number; bottom: number; blankFrom?: number }[] = [{ top: 0, bottom: pageHeight }]
+  const boundaries: PageBoundary[] = [{ top: 0, bottom: pageHeight }]
   let pageTop = 0
   let pageContentEnd = pageTop + margin + contentHeight
   let pageHasContent = false
   let metricIndex = 0
+  let guard = 0
 
-  while (metricIndex < metrics.length) {
-    const metric = metrics[metricIndex]
-    if (metric.bottom <= pageContentEnd + 0.5) {
-      pageHasContent = true
-      metricIndex += 1
-      continue
-    }
-
-    // A complete block gets moved to the next page when it fits there. This
-    // prevents headings, images, code, tables, and quotes from being stranded.
-    const fitsOnFreshPage = metric.height <= contentHeight
-    let nextPageTop: number
-    if (pageHasContent && metric.keepTogether && fitsOnFreshPage) {
-      nextPageTop = Math.max(pageTop + 1, metric.top - margin)
-      // Whatever sits below this point on the CURRENT page is the moved
-      // block's head (plus later siblings that follow it) — hide it.
-      const currentBoundary = boundaries[boundaries.length - 1]
-      currentBoundary.blankFrom = Math.max(pageTop + margin, metric.top)
-    } else {
-      // For flowing text (and oversized blocks), break at the last complete
-      // rendered line that fits. The following page starts at that line's end.
-      const safeBreak = getSafeBreak(metric.element, sourceElement, pageContentEnd)
-      if (safeBreak !== null && safeBreak > pageTop + margin + 1) {
-        nextPageTop = safeBreak - margin
-      } else if (pageHasContent) {
-        // Extremely unusual content (for example a replaced element with no
-        // text range) still gets a deterministic page break without looping.
-        nextPageTop = pageTop + pageHeight
-      } else {
-        // The first item on a page can be taller than the content area. Let it
-        // occupy this page and continue from the next safe line if possible.
-        pageHasContent = true
-        metricIndex += 1
-        continue
-      }
-    }
-
+  const startNewPage = (nextPageTop: number, blankFrom: number) => {
+    const current = boundaries[boundaries.length - 1]
+    current.blankFrom = Math.max(pageTop + margin, blankFrom)
     if (nextPageTop <= pageTop + 1) nextPageTop = pageTop + pageHeight
     pageTop = nextPageTop
     pageContentEnd = pageTop + margin + contentHeight
     pageHasContent = false
     boundaries.push({ top: pageTop, bottom: pageTop + pageHeight })
+  }
+
+  while (metricIndex < metrics.length && guard < 10_000) {
+    guard += 1
+    const metric = metrics[metricIndex]
+    const nextMetric = metrics[metricIndex + 1]
+    const remainingAfterHeading = pageContentEnd - metric.bottom
+    const headingWouldOrphan = metric.heading
+      && pageHasContent
+      && metric.bottom <= pageContentEnd + 0.5
+      && Boolean(nextMetric)
+      && remainingAfterHeading < 56
+
+    if (metric.bottom <= pageContentEnd + 0.5 && !headingWouldOrphan) {
+      pageHasContent = true
+      metricIndex += 1
+      continue
+    }
+
+    const fitsOnFreshPage = metric.height <= contentHeight
+    if (pageHasContent && (metric.keepTogether || headingWouldOrphan) && (fitsOnFreshPage || headingWouldOrphan)) {
+      startNewPage(Math.max(pageTop + 1, metric.top - margin), metric.top)
+      continue
+    }
+
+    const split = getSplitPoint(metric.element, sourceElement, pageContentEnd)
+    if (split && split.nextStart > pageTop + margin + 1 && split.cutAfter <= pageContentEnd + 0.5) {
+      startNewPage(split.nextStart - margin, split.nextStart)
+      continue
+    }
+
+    if (pageHasContent) {
+      startNewPage(pageTop + pageHeight, pageContentEnd)
+      continue
+    }
+
+    // First item on a page is taller than the content area and has no usable
+    // split. Give it this page and move on so pagination cannot loop.
+    pageHasContent = true
+    metricIndex += 1
   }
 
   return boundaries

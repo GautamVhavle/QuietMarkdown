@@ -10,7 +10,7 @@ export type ExportPreset =
   | 'executive'
   | 'notebook'
 export type ExportFont = 'serif' | 'classic' | 'sans' | 'humanist' | 'mono' | 'typewriter'
-export type PaperSize = 'a4' | 'letter'
+export type PaperSize = 'a5' | 'a4' | 'a3' | 'letter' | 'legal' | 'tabloid'
 export type WatermarkPosition =
   | 'center'
   | 'top-left'
@@ -61,7 +61,7 @@ const EXPORT_PRESETS: ExportPreset[] = [
   'editorial', 'minimal', 'academic', 'manuscript', 'swiss', 'letterpress', 'executive', 'notebook',
 ]
 const EXPORT_FONTS: ExportFont[] = ['serif', 'classic', 'sans', 'humanist', 'mono', 'typewriter']
-const PAPER_SIZES: PaperSize[] = ['a4', 'letter']
+export const PAPER_SIZES: PaperSize[] = ['a5', 'a4', 'a3', 'letter', 'legal', 'tabloid']
 const WATERMARK_POSITIONS: WatermarkPosition[] = [
   'center', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'tiled',
 ]

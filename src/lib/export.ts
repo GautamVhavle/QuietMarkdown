@@ -1,4 +1,4 @@
-import type { ExportSettings } from '../types'
+import type { ExportSettings, PaperSize } from '../types'
 
 const fonts = {
   serif: "'Newsreader', 'Iowan Old Style', Georgia, serif",
@@ -17,10 +17,24 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
 
-export const pageDimensions = {
+/** CSS-pixel page boxes at 96dpi, matching common print sizes. */
+export const pageDimensions: Record<PaperSize, { width: number; height: number; css: string }> = {
+  a5: { width: 559, height: 794, css: 'A5' },
   a4: { width: 794, height: 1123, css: 'A4' },
+  a3: { width: 1123, height: 1588, css: 'A3' },
   letter: { width: 816, height: 1056, css: 'Letter' },
+  legal: { width: 816, height: 1344, css: 'Legal' },
+  tabloid: { width: 1056, height: 1632, css: 'Tabloid' },
 }
+
+export const paperSizeOptions: Array<{ value: PaperSize; label: string }> = [
+  { value: 'a5', label: 'A5' },
+  { value: 'a4', label: 'A4' },
+  { value: 'a3', label: 'A3' },
+  { value: 'letter', label: 'US Letter' },
+  { value: 'legal', label: 'US Legal' },
+  { value: 'tabloid', label: 'Tabloid' },
+]
 
 export function getExportStyle(settings: ExportSettings) {
   const preset = {

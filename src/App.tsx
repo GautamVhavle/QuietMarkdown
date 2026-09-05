@@ -58,9 +58,11 @@ import {
   downloadBlob,
   getExportStyle,
   pageDimensions,
+  paperSizeOptions,
   safeFilename,
 } from './lib/export'
-import { computePageBoundaries } from './lib/pagination'
+import { computePageBoundaries, fitReplacedElementsToPage, getContentHeight, getContentWidth } from './lib/pagination'
+import { PagedPreview } from './components/PagedPreview'
 import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
 import { countDocument, renderMarkdown } from './lib/markdown'
@@ -81,6 +83,7 @@ const LEGACY_DOCUMENT_KEY = 'quietmarkdown:document:v1'
 const SETTINGS_KEY = 'quietmarkdown:export:v2'
 const LEGACY_SETTINGS_KEY = 'quietmarkdown:export:v1'
 const THEME_KEY = 'quietmarkdown:theme:v1'
+const PAGE_PREVIEW_KEY = 'quietmarkdown:page-preview:v1'
 
 type SaveState = 'saved' | 'saving' | 'error'
 
@@ -682,6 +685,11 @@ function ExportStudio({
   ) => {
     if (!captureRef.current) return
     await document.fonts.ready
+    fitReplacedElementsToPage(
+      captureRef.current,
+      getContentHeight(settings),
+      getContentWidth(settings),
+    )
     const images = Array.from(captureRef.current.querySelectorAll('img'))
     await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
 
@@ -848,8 +856,9 @@ function ExportStudio({
                     value={settings.paper}
                     onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
                   >
-                    <option value="a4">A4</option>
-                    <option value="letter">Letter</option>
+                    {paperSizeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
                   </select>
                 </label>
                 <label>
@@ -990,7 +999,15 @@ function ExportStudio({
               <span>{settings.paper.toUpperCase()} · {settings.font}</span>
             </div>
             <div className="export-preview-viewport">
-              <div ref={exportPreviewRef} className="export-page-scaler">
+              <div
+                ref={exportPreviewRef}
+                className="export-page-scaler"
+                style={{
+                  width: dimensions.width * 0.42,
+                  height: dimensions.height * 0.42,
+                  ['--preview-scale' as string]: 0.42,
+                }}
+              >
                 <ExportPage pageStyle={pageStyle} rendered={rendered} settings={settings} />
               </div>
             </div>
@@ -1055,6 +1072,9 @@ function App() {
   const [toast, setToast] = useState('')
   const [isMac, setIsMac] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [showPageBreaks, setShowPageBreaks] = useState(
+    () => readStorageJson<{ show?: boolean }>(PAGE_PREVIEW_KEY).value?.show === true,
+  )
   // Find & Replace state for the editor pane.
   const [findPanel, setFindPanel] = useState<'closed' | 'find' | 'replace'>('closed')
   const [findQuery, setFindQuery] = useState('')
@@ -1198,6 +1218,10 @@ function App() {
   useEffect(() => {
     writeSettingsSafely(exportSettings)
   }, [exportSettings])
+
+  useEffect(() => {
+    writeStorageJson(PAGE_PREVIEW_KEY, { show: showPageBreaks })
+  }, [showPageBreaks])
 
   useEffect(() => {
     try {
@@ -2083,10 +2107,48 @@ function App() {
         <div className="pane-divider" />
 
         <section className="preview-pane" aria-label="Rendered preview">
-          <div className="pane-label"><span>Preview</span><span>Live sync</span></div>
-          <div ref={previewScrollRef} className="preview-scroll" onScroll={handlePreviewScroll}>
+          <div className="pane-label">
+            <span>Preview</span>
+            <div className="preview-page-tools">
+              {showPageBreaks && (
+                <label className="paper-size-field">
+                  <span className="visually-hidden">Paper size</span>
+                  <select
+                    value={exportSettings.paper}
+                    onChange={(event) => setExportSettings({
+                      ...exportSettings,
+                      paper: event.target.value as ExportSettings['paper'],
+                    })}
+                    aria-label="Paper size"
+                  >
+                    {paperSizeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button
+                className={`pane-tool page-break-toggle ${showPageBreaks ? 'on' : ''}`}
+                onClick={() => setShowPageBreaks((value) => !value)}
+                aria-pressed={showPageBreaks}
+                aria-label="Show page breaks"
+                title="Show export page breaks"
+              >
+                Page breaks
+              </button>
+            </div>
+          </div>
+          <div
+            ref={previewScrollRef}
+            className={`preview-scroll ${showPageBreaks ? 'is-paged' : ''}`}
+            onScroll={handlePreviewScroll}
+          >
             {markdown ? (
-              <article className="markdown-body" dangerouslySetInnerHTML={{ __html: rendered }} />
+              showPageBreaks ? (
+                <PagedPreview html={rendered} settings={exportSettings} />
+              ) : (
+                <article className="markdown-body" dangerouslySetInnerHTML={{ __html: rendered }} />
+              )
             ) : (
               <div className="preview-empty">
                 <span className="empty-mark"><Sparkles size={20} /></span>

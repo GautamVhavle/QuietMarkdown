@@ -291,6 +291,43 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pane-label-actions { display: inline-flex; align-items: center; gap: 8px; }
 .pane-tool { display: grid; place-items: center; border: 0; border-radius: 5px; background: transparent; color: var(--ink-soft); cursor: pointer; padding: 3px; transition: color .15s ease, background .15s ease; }
 .pane-tool:hover { color: var(--ink); background: color-mix(in srgb, var(--ink-faint) 12%, transparent); }
+.preview-page-tools { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; }
+.paper-size-field select {
+  max-width: 118px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 6px;
+  background: var(--surface-solid);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 650;
+}
+.page-break-toggle {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.page-break-toggle.on { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.preview-scroll.is-paged { padding: 20px 16px 48px; background: color-mix(in srgb, var(--ink) 6%, var(--surface-soft)); }
+
+.paged-preview { display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.paged-measure { position: absolute; left: -12000px; top: 0; pointer-events: none; }
+.paged-measure-page { overflow: visible !important; height: auto !important; }
+.paged-sheet-frame { position: relative; margin: 0; }
+.paged-sheet { position: absolute; top: 0; left: 0; transform-origin: top left; box-shadow: 0 10px 28px rgba(20, 19, 17, .14); }
+.paged-sheet-source { position: relative; z-index: 2; }
+.paged-sheet-mask { position: absolute; left: 0; right: 0; z-index: 20; pointer-events: none; }
+.paged-sheet-mask-top { top: 0; }
+.paged-sheet-mask-bottom { bottom: 0; }
+.paged-sheet-mask-flow { left: 0; width: 100%; }
+.paged-folio { margin: 8px 0 0; color: var(--ink-faint); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-align: center; text-transform: uppercase; }
+.paged-measure-page img, .paged-sheet img { max-height: var(--page-content-height); max-width: 100%; height: auto; width: auto; }
 
 /* Find & Replace panel */
 .find-panel {
@@ -495,8 +532,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .preview-label { display: flex; height: 36px; flex: 0 0 auto; align-items: center; justify-content: space-between; padding: 0 14px; border-bottom: 1px solid rgba(0,0,0,.08); color: var(--ink-faint); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .preview-label span:last-child { font-weight: 500; }
 .export-preview-viewport { flex: 1; min-height: 0; overflow: auto; padding: 28px; }
-.export-page-scaler { width: 397px; height: 562px; margin: 0 auto; }
-.export-page-scaler .export-page-live { transform: scale(.5); transform-origin: left top; }
+.export-page-scaler { margin: 0 auto; }
+.export-page-scaler .export-page-live { transform: scale(var(--preview-scale, .5)); transform-origin: left top; }
 .export-page-live { isolation: isolate; position: relative; overflow: hidden; padding: var(--export-margin); background: var(--export-bg); color: var(--export-body); box-shadow: 0 14px 45px rgba(22,21,19,.16); font-family: var(--export-font); }
 .export-document { position: relative; z-index: 2; }
 .export-document > *:first-child { margin-top: 0; }
@@ -633,8 +670,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .document-stats { display: none; }
   .export-body { grid-template-columns: minmax(420px, 1fr) minmax(360px, .8fr); }
   .export-preview-viewport { padding: 20px 12px; }
-  .export-page-scaler { width: 357px; height: 505px; }
-  .export-page-scaler .export-page-live { transform: scale(.45); }
 }
 
 @media (max-width: 900px) {
@@ -701,8 +736,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .position-grid { grid-template-columns: repeat(3,1fr); }
   .export-preview-column { min-height: 500px; }
   .export-preview-viewport { padding: 18px 8px; }
-  .export-page-scaler { width: 318px; height: 450px; }
-  .export-page-scaler .export-page-live { transform: scale(.4); }
   .export-action { padding: 8px 6px; }
   .export-action small { display: none; }
   .export-action strong { font-size: 9px; }

@@ -4,6 +4,14 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ## [Unreleased]
 
+### Added
+
+- **Paged export preview** — toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as PDF/PNG export
+
+### Changed
+
+- PDF/PNG pagination now splits on complete lines, list items, and table rows, keeps headings with the following block, and masks leftover content so text is not sliced through a glyph
+
 ### Removed
 
 - Real-time Mermaid diagram rendering from the editor, preview, and exports

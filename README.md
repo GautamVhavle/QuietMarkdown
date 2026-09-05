@@ -53,6 +53,7 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 - Paste or drop screenshots straight into the text as embedded data URLs — downscaled and optimized locally
 - Local autosave with an honest save state (including "Not saved" if browser storage refuses writes)
 - Light and dark themes, word count, reading time, accessible controls, reduced-motion support
+- Optional **page-break preview** so you can see the document on A4 (or A5, A3, Letter, Legal, Tabloid) before exporting
 
 ### Useful Markdown, not feature bloat
 
@@ -65,7 +66,7 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 
 | Export | What you get |
 | --- | --- |
-| **PDF** | A direct multipage PDF download that matches the page preview, with element-aware pagination that keeps tables, images, and code blocks intact across breaks |
+| **PDF** | A direct multipage PDF download that matches the page preview, with line-aware pagination that keeps headings, tables, images, and code blocks intact across breaks |
 | **HTML** | A portable standalone document with selected styling and no watermark |
 | **PNG pages** | True 2× page images. Multi-page documents download as one ZIP containing numbered PNG files |
 

@@ -161,6 +161,31 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   expect(pdf.getPageCount()).toBeGreaterThan(0)
 })
 
+test('shows paged export preview at the selected paper size', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chromium', 'page-break tools are verified on larger viewports')
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill(
+    Array.from({ length: 18 }, (_, index) => `## Section ${index + 1}\n\n${'A complete sentence that should never be sliced through a letter when the page breaks. '.repeat(6)}`).join('\n\n'),
+  )
+  if (testInfo.project.name !== 'desktop-chromium') {
+    await page.getByRole('button', { name: 'Preview' }).click()
+  }
+
+  await page.getByRole('button', { name: 'Show page breaks' }).click()
+  await expect(page.getByRole('button', { name: 'Show page breaks' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByLabel('Paper size')).toHaveValue('a4')
+  await expect.poll(async () => page.locator('.paged-sheet').count()).toBeGreaterThan(1)
+  await expect(page.locator('.paged-folio').first()).toContainText('A4')
+
+  const a4Pages = await page.locator('.paged-sheet').count()
+  await page.getByLabel('Paper size').selectOption('a5')
+  await expect.poll(async () => page.locator('.paged-sheet').count()).toBeGreaterThan(a4Pages)
+  await expect(page.locator('.paged-folio').first()).toContainText('A5')
+
+  await page.getByLabel('Paper size').selectOption('a3')
+  await expect.poll(async () => page.locator('.paged-sheet').count()).toBeLessThan(a4Pages)
+})
+
 test('switches theme and customizes export watermark', async ({ page }) => {
   await page.getByLabel('Use dark theme').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
