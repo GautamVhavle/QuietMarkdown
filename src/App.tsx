@@ -66,6 +66,7 @@ import { readStorageJson, writeStorageJson } from './lib/storage'
 import { countDocument, renderMarkdown, initMermaid, freezeMermaidDiagrams, rasterizeMermaidDiagrams, stripMermaidRuntimeMarkup, fitMermaidDiagramsToPage } from './lib/markdown'
 import {
   defaultExportSettings,
+  normalizeExportSettings,
   type ExportSettings,
   type Theme,
   type ViewMode,
@@ -120,9 +121,19 @@ const loadLibrary = (): Library => {
   try {
     const stored = readStorageJson<Partial<Library>>(LIBRARY_KEY).value
     if (stored && Array.isArray(stored.docs)) {
+      const seenIds = new Set<string>()
       const docs = stored.docs
         .map(normalizeStoredDoc)
         .filter((doc): doc is LibraryDoc => Boolean(doc))
+        .map((doc) => {
+          if (!seenIds.has(doc.id)) {
+            seenIds.add(doc.id)
+            return doc
+          }
+          const next = { ...doc, id: createDocId() }
+          seenIds.add(next.id)
+          return next
+        })
         .slice(0, MAX_LIBRARY_DOCS)
       if (docs.length > 0) {
         const activeId = docs.some((doc) => doc.id === stored.activeId)
@@ -174,31 +185,69 @@ interface EditorState {
   markdown: string
   history: string[]
   historyIndex: number
+  coalescing: boolean
 }
 
 type EditorAction =
-  | { type: 'UPDATE'; markdown: string }
+  | { type: 'UPDATE'; markdown: string; coalesce?: boolean }
   | { type: 'UNDO' }
   | { type: 'REDO' }
   | { type: 'RESET'; markdown: string }
 
 const MAX_HISTORY = 100
 
+/**
+ * Consecutive inserts or deletes of a short run (typing, IME, backspace)
+ * collapse into one undo step. Large replacements (paste, format, fill)
+ * always start a new entry.
+ */
+function isCoalesceableChange(previous: string, next: string): boolean {
+  let prefix = 0
+  const limit = Math.min(previous.length, next.length)
+  while (prefix < limit && previous.charCodeAt(prefix) === next.charCodeAt(prefix)) prefix += 1
+  let suffix = 0
+  const prevTail = previous.length - prefix
+  const nextTail = next.length - prefix
+  while (
+    suffix < prevTail
+    && suffix < nextTail
+    && previous.charCodeAt(previous.length - 1 - suffix) === next.charCodeAt(next.length - 1 - suffix)
+  ) suffix += 1
+  const deleted = prevTail - suffix
+  const inserted = nextTail - suffix
+  return (deleted === 0 && inserted > 0 && inserted <= 8)
+    || (inserted === 0 && deleted > 0 && deleted <= 8)
+}
+
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     // Canonical history model: history[i] IS the state at position i and
     // historyIndex always points at the current entry. UPDATE appends the
-    // new state; UNDO/REDO move the pointer. (The previous model pushed
-    // the outgoing text instead, which duplicated entries after every
-    // RESET and made a single undo skip states.)
+    // new state; UNDO/REDO move the pointer. Consecutive typing coalesces
+    // into the current tip so a 100-entry cap is 100 edits, not 100 keys.
     case 'UPDATE': {
       if (action.markdown === state.markdown) return state
+      const atTip = state.historyIndex === state.history.length - 1
+      const canCoalesce = Boolean(action.coalesce)
+        && state.coalescing
+        && atTip
+        && isCoalesceableChange(state.markdown, action.markdown)
+      if (canCoalesce) {
+        const history = [...state.history.slice(0, -1), action.markdown]
+        return {
+          markdown: action.markdown,
+          history,
+          historyIndex: history.length - 1,
+          coalescing: true,
+        }
+      }
       const history = [...state.history.slice(0, state.historyIndex + 1), action.markdown]
       const trimmed = history.slice(-MAX_HISTORY)
       return {
         markdown: action.markdown,
         history: trimmed,
         historyIndex: trimmed.length - 1,
+        coalescing: Boolean(action.coalesce),
       }
     }
     case 'UNDO': {
@@ -208,6 +257,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         ...state,
         markdown: state.history[newIndex],
         historyIndex: newIndex,
+        coalescing: false,
       }
     }
     case 'REDO': {
@@ -217,6 +267,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         ...state,
         markdown: state.history[newIndex],
         historyIndex: newIndex,
+        coalescing: false,
       }
     }
     case 'RESET': {
@@ -224,6 +275,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
         markdown: action.markdown,
         history: [action.markdown],
         historyIndex: 0,
+        coalescing: false,
       }
     }
     default:
@@ -239,19 +291,33 @@ const loadSettings = () => {
     const legacyWatermark = parsed.watermark
     // One-time refresh of watermark defaults that shipped in an early version.
     const shouldRefreshLegacyDefaults = !current.value && legacyWatermark
+      && typeof legacyWatermark === 'object'
       && legacyWatermark.position === 'center'
       && legacyWatermark.size === 42
       && legacyWatermark.rotation === -28
-    return {
-      ...defaultExportSettings,
+    return normalizeExportSettings({
       ...parsed,
-      watermark: {
-        ...defaultExportSettings.watermark,
-        ...(shouldRefreshLegacyDefaults ? {} : parsed.watermark),
-      },
-    }
+      watermark: shouldRefreshLegacyDefaults ? undefined : parsed.watermark,
+    })
   }
   return defaultExportSettings
+}
+
+function parseWatermarkColor(color: string): { r: number; g: number; b: number } {
+  const hex = color.trim().replace('#', '')
+  const full = hex.length === 3 ? hex.split('').map((char) => char + char).join('') : hex
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return { r: 0.56, g: 0.26, b: 0.2 }
+  return {
+    r: Number.parseInt(full.slice(0, 2), 16) / 255,
+    g: Number.parseInt(full.slice(2, 4), 16) / 255,
+    b: Number.parseInt(full.slice(4, 6), 16) / 255,
+  }
+}
+
+/** Standard PDF fonts only encode WinAnsi. Drop anything else so export never throws. */
+function pdfSafeText(text: string): string {
+  const safe = text.replace(/[^\u0020-\u007E\u00A0-\u00FF]/g, '').trim()
+  return safe || 'WATERMARK'
 }
 
 const getInitialTheme = (): Theme => {
@@ -366,6 +432,10 @@ function ExportStudio({
   const captureRef = useRef<HTMLDivElement>(null)
   const exportPreviewRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
+  const closeStudio = () => {
+    if (exporting) return
+    onClose()
+  }
   const dimensions = pageDimensions[settings.paper]
   const exportStyle = getExportStyle(settings)
   const pageStyle = {
@@ -386,11 +456,11 @@ function ExportStudio({
   useEffect(() => {
     if (!open) return
     const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape' && !exporting) onClose()
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [open, onClose])
+  }, [open, onClose, exporting])
 
   useEffect(() => {
     if (!open) return
@@ -454,7 +524,7 @@ function ExportStudio({
       downloadBlob(
         createExportHtml(title, stage.innerHTML, settings),
         `${safeFilename(title)}.html`,
-        'application/octet-stream',
+        'text/html;charset=utf-8',
       )
       onToast('HTML file downloaded without watermark')
     } catch {
@@ -477,12 +547,8 @@ function ExportStudio({
       pdf.setCreator('quietmark.vercel.app')
       pdf.setProducer('QuietMarkdown')
 
-      const hex = settings.watermark.color.replace('#', '')
-      const watermarkColor = rgb(
-        Number.parseInt(hex.slice(0, 2), 16) / 255,
-        Number.parseInt(hex.slice(2, 4), 16) / 255,
-        Number.parseInt(hex.slice(4, 6), 16) / 255,
-      )
+      const parsedColor = parseWatermarkColor(settings.watermark.color)
+      const watermarkColor = rgb(parsedColor.r, parsedColor.g, parsedColor.b)
       const watermark = settings.watermark
 
       await renderExportPages(async (canvas) => {
@@ -494,7 +560,7 @@ function ExportStudio({
         page.drawImage(image, { x: 0, y: 0, width: dimensions.width, height: dimensions.height })
 
         if (watermark.enabled && watermark.text.trim()) {
-          const text = watermark.text.trim()
+          const text = pdfSafeText(watermark.text)
           let size = watermark.size
           let textWidth = font.widthOfTextAtSize(text, size)
           const maxWidth = dimensions.width * 0.82
@@ -528,8 +594,11 @@ function ExportStudio({
         canvas.height = 1
       }, false)
 
+      if (pdf.getPageCount() === 0) throw new Error('PDF export produced no pages')
       const bytes = await pdf.save({ useObjectStreams: true })
-      downloadBlob(new Uint8Array(bytes).buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
+      const pdfBytes = new Uint8Array(bytes.byteLength)
+      pdfBytes.set(bytes)
+      downloadBlob(pdfBytes.buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
       const invalidDiagrams = captureRef.current?.querySelectorAll('.mermaid-invalid').length ?? 0
       onToast(invalidDiagrams > 0
         ? `PDF saved · ${invalidDiagrams} diagram${invalidDiagrams === 1 ? '' : 's'} kept their last valid version`
@@ -559,6 +628,7 @@ function ExportStudio({
         if (index % 2 === 1) await new Promise((resolve) => requestAnimationFrame(resolve))
       })
       const filename = safeFilename(title)
+      if (blobs.length === 0) throw new Error('PNG export produced no pages')
       if (blobs.length === 1) {
         downloadBlob(blobs[0], `${filename}.png`, 'image/png')
         onToast('High-resolution PNG page downloaded')
@@ -711,7 +781,7 @@ function ExportStudio({
           flowMask.style.display = 'none'
         }
         const canvas = await toCanvas(viewport, {
-          cacheBust: true,
+          cacheBust: false,
           pixelRatio,
           backgroundColor: exportStyle.background,
           width: dimensions.width,
@@ -751,7 +821,7 @@ function ExportStudio({
   ]
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className="modal-backdrop" onMouseDown={closeStudio}>
       <section
         className="export-studio"
         role="dialog"
@@ -764,7 +834,13 @@ function ExportStudio({
             <span className="eyebrow"><Sparkles size={13} /> Export studio</span>
             <h2 id="export-title">Finish it beautifully.</h2>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="Close export studio">
+          <button
+            className="icon-button"
+            onClick={closeStudio}
+            aria-label="Close export studio"
+            disabled={exporting !== null}
+            title={exporting ? 'Export in progress' : 'Close export studio'}
+          >
             <X size={18} />
           </button>
         </header>
@@ -1002,7 +1078,7 @@ function App() {
   const [title, setTitle] = useState(activeDoc.title)
   const [editor, setEditor] = useReducer(
     editorReducer,
-    { markdown: activeDoc.markdown, history: [activeDoc.markdown], historyIndex: 0 },
+    { markdown: activeDoc.markdown, history: [activeDoc.markdown], historyIndex: 0, coalescing: false },
   )
   const markdown = editor.markdown
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
@@ -1033,6 +1109,7 @@ function App() {
   const [matchIndex, setMatchIndex] = useState(0)
   const findInputRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<number | null>(null)
+  const lastTypedAtRef = useRef(0)
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const scrollSyncOriginRef = useRef<'editor' | 'preview' | null>(null)
@@ -1056,6 +1133,13 @@ function App() {
   )
   const saveState: SaveState = storageError ? 'error' : currentDocument === lastSavedDocument ? 'saved' : 'saving'
 
+  // Always read the latest library/document from here so a delayed autosave
+  // cannot clobber a duplicate/delete that happened while the timer was pending.
+  const persistRef = useRef({ library, activeId, title, markdown, currentDocument })
+  useEffect(() => {
+    persistRef.current = { library, activeId, title, markdown, currentDocument }
+  })
+
   const persistLibrary = (next: Library): boolean => {
     const result = writeStorageJson(LIBRARY_KEY, next)
     if (!result.ok) {
@@ -1074,30 +1158,74 @@ function App() {
   // Write the ACTIVE document's latest content into the library and storage,
   // and mirror it into component state so later operations never act on a
   // stale snapshot. Always build the next state from the returned value.
-  const flushActiveDoc = (): Library => {
+  const flushActiveDoc = (): { library: Library; ok: boolean } => {
+    const snapshot = persistRef.current
     const next: Library = {
-      activeId,
-      docs: library.docs.map((doc) => (
-        doc.id === activeId ? { ...doc, title, markdown, updatedAt: Date.now() } : doc
+      activeId: snapshot.activeId,
+      docs: snapshot.library.docs.map((doc) => (
+        doc.id === snapshot.activeId
+          ? { ...doc, title: snapshot.title, markdown: snapshot.markdown, updatedAt: Date.now() }
+          : doc
       )),
     }
-    persistLibrary(next)
+    const ok = persistLibrary(next)
     setLibrary(next)
-    return next
+    persistRef.current.library = next
+    return { library: next, ok }
+  }
+
+  const markSavedIfCurrent = (ok: boolean) => {
+    if (ok) setLastSavedDocument(persistRef.current.currentDocument)
   }
 
   useEffect(() => {
     if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null
-      flushActiveDoc()
-      setLastSavedDocument(currentDocument)
+      const { ok } = flushActiveDoc()
+      markSavedIfCurrent(ok)
     }, 450)
     return () => {
       if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDocument])
+
+  useEffect(() => {
+    if (!storageError) return
+    const timer = window.setInterval(() => {
+      const { ok } = flushActiveDoc()
+      markSavedIfCurrent(ok)
+    }, 4000)
+    return () => window.clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageError])
+
+  // Mobile Safari often skips beforeunload; pagehide / tab-hide still fire.
+  useEffect(() => {
+    const persistQuietly = () => {
+      const snapshot = persistRef.current
+      const next: Library = {
+        activeId: snapshot.activeId,
+        docs: snapshot.library.docs.map((doc) => (
+          doc.id === snapshot.activeId
+            ? { ...doc, title: snapshot.title, markdown: snapshot.markdown, updatedAt: Date.now() }
+            : doc
+        )),
+      }
+      writeStorageJson(LIBRARY_KEY, next)
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') persistQuietly()
+    }
+    window.addEventListener('pagehide', persistQuietly)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      persistQuietly()
+      window.removeEventListener('pagehide', persistQuietly)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [])
 
   // Warn before closing while a save is still in flight or storage refused.
   useEffect(() => {
@@ -1136,12 +1264,13 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [toast])
 
-  // Close the documents popover or find panel on Escape.
+  // Close overlays that are not themselves dialogs (export/welcome have their own).
   useEffect(() => {
-    if (!docsOpen && findPanel === 'closed') return
+    if (!docsOpen && findPanel === 'closed' && !shortcutsOpen) return
     const handleEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (docsOpen) setDocsOpen(false)
+      else if (shortcutsOpen) setShortcutsOpen(false)
       else {
         setFindPanel('closed')
         editorRef.current?.focus()
@@ -1149,7 +1278,24 @@ function App() {
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
-  }, [docsOpen, findPanel])
+  }, [docsOpen, findPanel, shortcutsOpen])
+
+  useEffect(() => {
+    if (!shortcutsOpen) return
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('.shortcuts-popover, [aria-label="Keyboard shortcuts"]')) return
+      setShortcutsOpen(false)
+    }
+    window.addEventListener('mousedown', onPointer)
+    return () => window.removeEventListener('mousedown', onPointer)
+  }, [shortcutsOpen])
+
+  useEffect(() => {
+    const clearDrag = () => setDragging(false)
+    window.addEventListener('dragend', clearDrag)
+    return () => window.removeEventListener('dragend', clearDrag)
+  }, [])
 
   // Detect platform (Mac vs Windows) and mobile
   useEffect(() => {
@@ -1206,6 +1352,7 @@ function App() {
   }
 
   const setEditorValue = (next: string, selectionStart: number, selectionEnd: number) => {
+    lastTypedAtRef.current = 0
     setEditor({ type: 'UPDATE', markdown: next })
     requestAnimationFrame(() => {
       editorRef.current?.focus()
@@ -1220,11 +1367,13 @@ function App() {
     // Persist the outgoing document immediately so nothing is lost mid-switch.
     if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = null
-    const flushed = flushActiveDoc()
+    const { library: flushed } = flushActiveDoc()
     const target = flushed.docs.find((doc) => doc.id === id)
     if (!target) return
     const next: Library = { activeId: id, docs: flushed.docs }
     persistLibrary(next)
+    persistRef.current.library = next
+    persistRef.current.activeId = id
     setLibrary(next)
     setActiveId(id)
     setTitle(target.title)
@@ -1237,17 +1386,22 @@ function App() {
   const createDoc = () => {
     if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = null
-    const flushed = flushActiveDoc()
+    const { library: flushed } = flushActiveDoc()
+    if (flushed.docs.length >= MAX_LIBRARY_DOCS) {
+      setToast(`Library holds up to ${MAX_LIBRARY_DOCS} documents`)
+      return
+    }
     const docId = createDocId()
     const doc: LibraryDoc = {
       id: docId,
       title: 'Untitled document',
       markdown: '',
-      // eslint-disable-next-line react-hooks/purity -- runs in a click handler, never during render
       updatedAt: Date.now(),
     }
-    const next: Library = { activeId: doc.id, docs: [doc, ...flushed.docs].slice(0, MAX_LIBRARY_DOCS) }
+    const next: Library = { activeId: doc.id, docs: [doc, ...flushed.docs] }
     if (!persistLibrary(next)) return
+    persistRef.current.library = next
+    persistRef.current.activeId = doc.id
     setLibrary(next)
     setActiveId(doc.id)
     setTitle(doc.title)
@@ -1259,7 +1413,7 @@ function App() {
   }
 
   const duplicateDoc = (id: string) => {
-    const current = flushActiveDoc()
+    const { library: current } = flushActiveDoc()
     const source = current.docs.find((doc) => doc.id === id)
     if (!source) return
     if (current.docs.length >= MAX_LIBRARY_DOCS) {
@@ -1272,12 +1426,13 @@ function App() {
       docs: [copy, ...current.docs].slice(0, MAX_LIBRARY_DOCS),
     }
     if (!persistLibrary(next)) return
+    persistRef.current.library = next
     setLibrary(next)
     setToast('Document duplicated')
   }
 
   const deleteDoc = (id: string) => {
-    const current = flushActiveDoc()
+    const { library: current } = flushActiveDoc()
     if (current.docs.length <= 1) {
       setToast('The last document cannot be deleted')
       return
@@ -1289,6 +1444,8 @@ function App() {
       const fallback = [...remaining].sort((a, b) => b.updatedAt - a.updatedAt)[0]
       next = { activeId: fallback.id, docs: remaining }
       if (!persistLibrary(next)) return
+      persistRef.current.library = next
+      persistRef.current.activeId = fallback.id
       setLibrary(next)
       setActiveId(fallback.id)
       setTitle(fallback.title)
@@ -1297,6 +1454,7 @@ function App() {
     } else {
       next = { activeId, docs: remaining }
       if (!persistLibrary(next)) return
+      persistRef.current.library = next
       setLibrary(next)
     }
     setDeleteArmId(null)
@@ -1542,6 +1700,16 @@ function App() {
     )
   }
 
+  const saveNow = () => {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    const { ok } = flushActiveDoc()
+    markSavedIfCurrent(ok)
+    setToast(ok ? 'Saved locally in this browser' : 'Could not save in this browser')
+  }
+
   const downloadMarkdown = () => {
     downloadBlob(markdown, `${safeFilename(title)}.md`, 'text/markdown;charset=utf-8')
     setToast('Markdown downloaded')
@@ -1552,10 +1720,35 @@ function App() {
       setToast('Choose a Markdown or text file')
       return
     }
-    const content = await file.text()
-    setEditor({ type: 'RESET', markdown: content })
-    setTitle(file.name.replace(/\.(md|markdown|mdown|txt)$/i, '') || 'Untitled')
-    setToast(`${file.name} opened`)
+    try {
+      const content = await file.text()
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+      const { library: flushed } = flushActiveDoc()
+      if (flushed.docs.length >= MAX_LIBRARY_DOCS) {
+        setToast(`Library holds up to ${MAX_LIBRARY_DOCS} documents`)
+        return
+      }
+      const nextTitle = file.name.replace(/\.(md|markdown|mdown|txt)$/i, '') || 'Untitled'
+      const doc: LibraryDoc = {
+        id: createDocId(),
+        title: nextTitle,
+        markdown: content,
+        updatedAt: Date.now(),
+      }
+      const next: Library = { activeId: doc.id, docs: [doc, ...flushed.docs] }
+      if (!persistLibrary(next)) return
+      setLibrary(next)
+      persistRef.current.library = next
+      persistRef.current.activeId = doc.id
+      setActiveId(doc.id)
+      setTitle(doc.title)
+      setEditor({ type: 'RESET', markdown: content })
+      setLastSavedDocument(JSON.stringify({ id: doc.id, title: doc.title, markdown: content }))
+      setToast(`${file.name} opened as a new document`)
+    } catch {
+      setToast('This file could not be opened')
+    }
   }
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
@@ -1585,6 +1778,7 @@ function App() {
   }
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing) return
     const modifier = event.metaKey || event.ctrlKey
     if (event.key === 'Tab') {
       event.preventDefault()
@@ -1612,6 +1806,7 @@ function App() {
     else if (key === 'h') { event.preventDefault(); openFindPanel('replace') }
     else if (key === 'n' && event.altKey) { event.preventDefault(); createDoc() }
     else if (key === 's' && event.shiftKey) { event.preventDefault(); downloadMarkdown() }
+    else if (key === 's') { event.preventDefault(); saveNow() }
     else if (key === 'o') { event.preventDefault(); fileInputRef.current?.click() }
     else if (key === 'e' && event.shiftKey) { event.preventDefault(); setExportOpen(true) }
     else if (key === '/' && event.shiftKey) { event.preventDefault(); setShortcutsOpen(true) }
@@ -1633,6 +1828,91 @@ function App() {
 
   const canUndo = editor.historyIndex > 0
   const canRedo = editor.historyIndex < editor.history.length - 1
+
+  const shortcutHandlersRef = useRef({
+    undo,
+    redo,
+    applyFormat,
+    createDoc,
+    downloadMarkdown,
+    saveNow,
+    openFindPanel,
+  })
+  useEffect(() => {
+    shortcutHandlersRef.current = {
+      undo,
+      redo,
+      applyFormat,
+      createDoc,
+      downloadMarkdown,
+      saveNow,
+      openFindPanel,
+    }
+  })
+
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.isComposing || event.key === 'Process') return
+      const modifier = event.metaKey || event.ctrlKey
+      if (!modifier) return
+
+      const target = event.target as HTMLElement | null
+      if (target === editorRef.current) return
+
+      const tag = target?.tagName
+      const inField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || Boolean(target?.isContentEditable)
+      const key = event.key.toLowerCase()
+      const handlers = shortcutHandlersRef.current
+
+      if (key === 's') {
+        event.preventDefault()
+        if (event.shiftKey) handlers.downloadMarkdown()
+        else handlers.saveNow()
+        return
+      }
+      if (key === 'o') {
+        event.preventDefault()
+        fileInputRef.current?.click()
+        return
+      }
+      if (key === 'e' && event.shiftKey) {
+        event.preventDefault()
+        setExportOpen(true)
+        return
+      }
+      if (key === '/' && event.shiftKey) {
+        event.preventDefault()
+        setShortcutsOpen(true)
+        return
+      }
+      if (key === 'n' && event.altKey) {
+        event.preventDefault()
+        handlers.createDoc()
+        return
+      }
+      if (key === 'f') {
+        event.preventDefault()
+        handlers.openFindPanel('find')
+        return
+      }
+      if (key === 'h') {
+        event.preventDefault()
+        handlers.openFindPanel('replace')
+        return
+      }
+
+      if (inField) return
+
+      if (key === 'z' && !event.shiftKey) { event.preventDefault(); handlers.undo() }
+      else if ((key === 'z' && event.shiftKey) || key === 'y') { event.preventDefault(); handlers.redo() }
+      else if (key === 'b') { event.preventDefault(); handlers.applyFormat('bold') }
+      else if (key === 'i') { event.preventDefault(); handlers.applyFormat('italic') }
+      else if (key === 'k') { event.preventDefault(); handlers.applyFormat('link') }
+      else if (key === 'e') { event.preventDefault(); handlers.applyFormat('code') }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const toolbarItems = [
     { action: 'undo' as const, icon: ArrowLeft, label: 'Undo', shortcut: isMac ? '⌘Z' : 'Ctrl+Z', group: 'history', disabled: !canUndo },
@@ -1844,7 +2124,12 @@ function App() {
             <textarea
               ref={editorRef}
               value={markdown}
-              onChange={(event) => setEditor({ type: 'UPDATE', markdown: event.target.value })}
+              onChange={(event) => {
+                const now = Date.now()
+                const coalesce = now - lastTypedAtRef.current < 800
+                lastTypedAtRef.current = now
+                setEditor({ type: 'UPDATE', markdown: event.target.value, coalesce })
+              }}
               onScroll={handleEditorScroll}
               onKeyDown={handleEditorKeyDown}
               onPaste={handleEditorPaste}
@@ -1898,7 +2183,7 @@ function App() {
             <GitHubMark size={13} />
             <span>View on GitHub</span>
           </a>
-          <span className={`footer-save ${saveState}`}><b /> {saveState === 'saved' ? 'Saved' : 'Saving'}</span>
+          <span className={`footer-save ${saveState}`}><b /> {saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Not saved' : 'Saving'}</span>
           <button onClick={() => setExportOpen(true)}><FileDown size={14} /> Export</button>
         </div>
       </footer>
@@ -1921,7 +2206,7 @@ function App() {
         >
           <span><UploadCloud size={28} /></span>
           <h2>Drop to open</h2>
-          <p>Your current draft remains safe in this browser.</p>
+          <p>Markdown files open as a new document. Images embed in the page you are writing. Your current draft stays in the library.</p>
         </div>
       )}
 

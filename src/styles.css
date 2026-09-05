@@ -331,6 +331,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .save-indicator.error b { background: #dc2626; }
 .save-indicator.error { color: #b91c1c; }
 [data-theme='dark'] .save-indicator.error { color: #f87171; }
+.footer-save.error b { background: #dc2626; }
+.footer-save.error { color: #b91c1c; }
+[data-theme='dark'] .footer-save.error { color: #f87171; }
 
 /* Pane label with tools */
 .pane-label-actions { display: inline-flex; align-items: center; gap: 8px; }

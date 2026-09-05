@@ -379,8 +379,14 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
-      if (event.key === 'ArrowRight') setScene((s) => Math.min(SCENE_COUNT - 1, s + 1))
-      if (event.key === 'ArrowLeft') setScene((s) => Math.max(0, s - 1))
+      if (event.key === 'ArrowRight') {
+        setDirection(1)
+        setScene((s) => Math.min(SCENE_COUNT - 1, s + 1))
+      }
+      if (event.key === 'ArrowLeft') {
+        setDirection(-1)
+        setScene((s) => Math.max(0, s - 1))
+      }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
@@ -468,6 +474,9 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
           <button
             className="quiet-button welcome-back"
             onClick={goBack}
+            disabled={scene === 0}
+            tabIndex={scene === 0 ? -1 : 0}
+            aria-hidden={scene === 0}
             style={{ visibility: scene === 0 ? 'hidden' : 'visible' }}
           >
             Back

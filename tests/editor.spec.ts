@@ -125,6 +125,9 @@ test('opens a local Markdown file', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: 'Field notes' })).toBeVisible()
   if (testInfo.project.name === 'desktop-chromium') {
     await expect(page.getByText('field-notes.md opened')).toBeVisible()
+    await page.getByRole('button', { name: 'Documents' }).click()
+    await expect(page.locator('.docs-list li')).toHaveCount(2)
+    await expect(page.locator('.docs-list')).toContainText('QuietMarkdown editor field guide')
   }
 })
 
@@ -400,6 +403,17 @@ test('welcomes first-time visitors with a skippable tour', async ({ page }, test
   await expect(dialog).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
+})
+
+test('coalesces typing into a single undo step', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'history is exercised on desktop')
+  const editor = page.getByLabel('Markdown content')
+  await editor.fill('# Start\n\n')
+  await editor.focus()
+  await editor.pressSequentially('hello')
+  await expect(editor).toHaveValue('# Start\n\nhello')
+  await editor.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z')
+  await expect(editor).toHaveValue('# Start\n\n')
 })
 
 test('clears the page from the documents menu with an undo safety net', async ({ page }, testInfo) => {

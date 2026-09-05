@@ -20,7 +20,7 @@ function resolveBuildSha(): string {
 // interop import works both in the bundled dev config and the production build.
 import MarkdownIt from 'markdown-it'
 import taskLists from 'markdown-it-task-lists'
-import { starterMarkdown } from './src/lib/starter'
+import { starterMarkdown } from './src/lib/starter.ts'
 
 function resolveSiteUrl() {
   const configured = process.env.VITE_SITE_URL

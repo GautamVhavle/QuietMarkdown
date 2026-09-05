@@ -11,7 +11,13 @@ function isKeepTogether(element: HTMLElement): boolean {
   // break through one crops the drawing mid-shape. Oversized ones are scaled
   // to fit a single page before pagination runs (fitMermaidDiagramsToPage).
   if (element.classList.contains('mermaid')) return true
-  return KEEP_TOGETHER.has(element.tagName)
+  if (KEEP_TOGETHER.has(element.tagName)) return true
+  // markdown-it wraps images in <p>; a page break through that paragraph
+  // slices the picture. Treat image-only wrappers as atomic blocks.
+  const replaced = element.querySelector(':scope > img, :scope > svg, :scope > .mermaid, :scope > figure')
+  if (!replaced) return false
+  const text = element.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+  return text.length <= 40
 }
 
 export function getContentHeight(settings: ExportSettings): number {

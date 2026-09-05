@@ -56,7 +56,18 @@ let mermaidSlotCounter = 0
 let mermaidRenderCounter = 0
 let mermaidModulePromise: Promise<MermaidApi> | null = null
 let initializedMermaidTheme: MermaidTheme | null = null
+let mermaidQueue: Promise<unknown> = Promise.resolve()
 const mermaidRunIds = new WeakMap<HTMLElement, number>()
+
+/** Serialize mermaid.initialize + render so preview and export cannot race the global theme. */
+function enqueueMermaid<T>(task: () => Promise<T>): Promise<T> {
+  const run = mermaidQueue.then(task, task)
+  mermaidQueue = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
 
 /** Finished renders: `${theme}\u0000${source}` -> svg markup. */
 const mermaidSvgCache = new Map<string, string>()
@@ -67,6 +78,7 @@ interface MermaidSlotMemory { code: string; theme: MermaidTheme; svg: string }
 const mermaidSlotMemory = new Map<number, MermaidSlotMemory>()
 
 const MERMAID_CACHE_LIMIT = 160
+const MERMAID_SLOT_LIMIT = 80
 
 function lruGet<V>(map: Map<string, V>, key: string): V | undefined {
   const value = map.get(key)
@@ -83,6 +95,15 @@ function lruSet<V>(map: Map<string, V>, key: string, value: V): void {
   if (map.size > MERMAID_CACHE_LIMIT) {
     const oldest = map.keys().next().value
     if (oldest !== undefined) map.delete(oldest)
+  }
+}
+
+function rememberMermaidSlot(slot: number, memory: MermaidSlotMemory): void {
+  mermaidSlotMemory.delete(slot)
+  mermaidSlotMemory.set(slot, memory)
+  if (mermaidSlotMemory.size > MERMAID_SLOT_LIMIT) {
+    const oldest = mermaidSlotMemory.keys().next().value
+    if (oldest !== undefined) mermaidSlotMemory.delete(oldest)
   }
 }
 
@@ -426,7 +447,6 @@ export async function initMermaid(
 
   // Documents without diagrams never pay for the (large) Mermaid chunk.
   const slots = Array.from(container.querySelectorAll<HTMLElement>('[data-mermaid]'))
-    .filter((element) => !element.classList.contains('mermaid-invalid'))
   if (slots.length === 0) return
 
   let mermaid: MermaidApi
@@ -441,16 +461,6 @@ export async function initMermaid(
     return
   }
   if (mermaidRunIds.get(container) !== runId) return
-
-  if (initializedMermaidTheme !== theme) {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: theme === 'dark' ? 'dark' : 'base',
-      securityLevel: 'loose',
-      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-    })
-    initializedMermaidTheme = theme
-  }
 
   interface PendingDiagram {
     element: HTMLElement
@@ -467,7 +477,12 @@ export async function initMermaid(
   for (const element of elements) {
     const encoded = element.getAttribute('data-mermaid')
     if (!encoded) continue
-    const code = decodeURIComponent(encoded)
+    let code: string
+    try {
+      code = decodeURIComponent(encoded)
+    } catch {
+      continue
+    }
     const slot = Number.parseInt(element.getAttribute('data-slot') ?? '-1', 10)
     const key = mermaidCacheKey(theme, code)
 
@@ -496,55 +511,72 @@ export async function initMermaid(
 
   if (pending.length === 0 || mermaidRunIds.get(container) !== runId) return
 
-  // Pass 2: validate + render sequentially. Mermaid shares global state, so
-  // serial keeps output deterministic; the caches make repeats cheap.
-  for (const { element, encoded, code, slot, key } of pending) {
+  // Pass 2: validate + render. Mermaid's initialize/render pair is global, so
+  // a queue keeps preview and export from painting the wrong theme into cache.
+  await enqueueMermaid(async () => {
     if (mermaidRunIds.get(container) !== runId) return
-    if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
-
-    const knownFailure = lruGet(mermaidFailureCache, key)
-    if (knownFailure) {
-      markMermaidInvalid(element, knownFailure)
-      continue
+    if (initializedMermaidTheme !== theme) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: theme === 'dark' ? 'dark' : 'base',
+        securityLevel: 'loose',
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      })
+      initializedMermaidTheme = theme
     }
 
-    const renderId = `quietmarkdown-m-${++mermaidRenderCounter}`
-    try {
+    for (const { element, encoded, code, slot, key } of pending) {
+      if (mermaidRunIds.get(container) !== runId) return
+      if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
+
+      const knownFailure = lruGet(mermaidFailureCache, key)
+      if (knownFailure) {
+        markMermaidInvalid(element, knownFailure)
+        continue
+      }
+
+      const renderId = `quietmarkdown-m-${++mermaidRenderCounter}`
       try {
-        await mermaid.parse(code)
-      } catch (parseError) {
-        throw parseError instanceof Error ? parseError : new Error(String(parseError))
-      }
-      if (mermaidRunIds.get(container) !== runId) return
-      if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
+        try {
+          await mermaid.parse(code)
+        } catch (parseError) {
+          throw parseError instanceof Error ? parseError : new Error(String(parseError))
+        }
+        if (mermaidRunIds.get(container) !== runId) return
+        if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
 
-      const { svg, bindFunctions } = await mermaid.render(renderId, code)
-      if (mermaidRunIds.get(container) !== runId) return
-      if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
+        const { svg, bindFunctions } = await mermaid.render(renderId, code)
+        if (mermaidRunIds.get(container) !== runId) return
+        if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
 
-      lruSet(mermaidSvgCache, key, svg)
-      if (slot >= 0) mermaidSlotMemory.set(slot, { code, theme, svg })
-      commitMermaidSvg(element, svg, mermaidRenderTag(theme, code))
-      bindFunctions?.(element)
-    } catch (error) {
-      if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
-      const message = shortErrorMessage(error)
-      lruSet(mermaidFailureCache, key, message)
-      markMermaidInvalid(element, message)
-    } finally {
-      // Mermaid leaves scratch nodes in <body> on failures. Careful: the
-      // rendered SVG itself carries this same id once inserted, so only
-      // remove matches that live OUTSIDE the preview container.
-      for (const scratchId of [renderId, `d${renderId}`]) {
-        const scratch = document.getElementById(scratchId)
-        if (scratch && !container.contains(scratch)) scratch.remove()
+        lruSet(mermaidSvgCache, key, svg)
+        if (slot >= 0) rememberMermaidSlot(slot, { code, theme, svg })
+        commitMermaidSvg(element, svg, mermaidRenderTag(theme, code))
+        try {
+          bindFunctions?.(element)
+        } catch {
+          // Interactive bindings are optional; a diagram without them is still useful.
+        }
+      } catch (error) {
+        if (!element.isConnected || element.getAttribute('data-mermaid') !== encoded) continue
+        const message = shortErrorMessage(error)
+        lruSet(mermaidFailureCache, key, message)
+        markMermaidInvalid(element, message)
+      } finally {
+        // Mermaid leaves scratch nodes in <body> on failures. Careful: the
+        // rendered SVG itself carries this same id once inserted, so only
+        // remove matches that live OUTSIDE the preview container.
+        for (const scratchId of [renderId, `d${renderId}`]) {
+          const scratch = document.getElementById(scratchId)
+          if (scratch && !container.contains(scratch)) scratch.remove()
+        }
       }
     }
-  }
+  })
 }
 
 export function countDocument(source: string) {
   const words = source.trim() ? source.trim().split(/\s+/).length : 0
-  const minutes = Math.max(1, Math.ceil(words / 220))
+  const minutes = words === 0 ? 0 : Math.max(1, Math.ceil(words / 220))
   return { words, minutes, characters: source.length }
 }
