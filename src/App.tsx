@@ -60,10 +60,10 @@ import {
   pageDimensions,
   safeFilename,
 } from './lib/export'
-import { computePageBoundaries, getContentHeight, getContentWidth } from './lib/pagination'
+import { computePageBoundaries } from './lib/pagination'
 import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
-import { countDocument, renderMarkdown, initMermaid, freezeMermaidDiagrams, rasterizeMermaidDiagrams, stripMermaidRuntimeMarkup, fitMermaidDiagramsToPage } from './lib/markdown'
+import { countDocument, renderMarkdown } from './lib/markdown'
 import {
   defaultExportSettings,
   normalizeExportSettings,
@@ -462,21 +462,6 @@ function ExportStudio({
     return () => window.removeEventListener('keydown', handleEscape)
   }, [open, onClose, exporting])
 
-  useEffect(() => {
-    if (!open) return
-    const frame = requestAnimationFrame(() => {
-      const preview = exportPreviewRef.current
-      const capture = captureRef.current
-      void Promise.all([
-        preview ? initMermaid(preview) : Promise.resolve(),
-        // The capture host is a scratch surface: it gets frozen into <img>s
-        // right before rasterization, so it must not self-heal back to SVGs.
-        capture ? initMermaid(capture, 'light', { watch: false }) : Promise.resolve(),
-      ])
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [open, rendered])
-
   if (!open) return null
 
   const updateSettings = <K extends keyof ExportSettings>(key: K, value: ExportSettings[K]) => {
@@ -508,29 +493,16 @@ function ExportStudio({
   }
 
   const exportHtml = async () => {
-    // Render diagrams into an offscreen stage, then freeze them into
-    // self-contained <img> data URLs so the downloaded file shows the
-    // rendered diagrams everywhere — no JavaScript required.
-    const stage = document.createElement('div')
-    stage.className = 'export-document'
-    stage.style.cssText = 'position:fixed;left:-12000px;top:0;width:700px;background:transparent;'
-    stage.innerHTML = rendered
-    document.body.append(stage)
     try {
-      await initMermaid(stage, 'light', { watch: false })
       await document.fonts.ready
-      freezeMermaidDiagrams(stage)
-      stripMermaidRuntimeMarkup(stage)
       downloadBlob(
-        createExportHtml(title, stage.innerHTML, settings),
+        createExportHtml(title, rendered, settings),
         `${safeFilename(title)}.html`,
         'text/html;charset=utf-8',
       )
       onToast('HTML file downloaded without watermark')
     } catch {
       onToast('Could not prepare the HTML export')
-    } finally {
-      stage.remove()
     }
   }
 
@@ -599,10 +571,7 @@ function ExportStudio({
       const pdfBytes = new Uint8Array(bytes.byteLength)
       pdfBytes.set(bytes)
       downloadBlob(pdfBytes.buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
-      const invalidDiagrams = captureRef.current?.querySelectorAll('.mermaid-invalid').length ?? 0
-      onToast(invalidDiagrams > 0
-        ? `PDF saved · ${invalidDiagrams} diagram${invalidDiagrams === 1 ? '' : 's'} kept their last valid version`
-        : 'PDF downloaded with a watermark on every page')
+      onToast('PDF downloaded with a watermark on every page')
     } catch (error) {
       console.error('PDF export failed', error)
       onToast('This document could not be rendered as a PDF')
@@ -642,10 +611,7 @@ function ExportStudio({
       })
       const zip = await archive.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
       downloadBlob(zip, `${filename}-png-pages.zip`, 'application/zip')
-      const invalidDiagrams = captureRef.current?.querySelectorAll('.mermaid-invalid').length ?? 0
-      onToast(invalidDiagrams > 0
-        ? `${pageCount} PNG pages saved · ${invalidDiagrams} diagram${invalidDiagrams === 1 ? '' : 's'} kept their last valid version`
-        : `${pageCount} high-resolution PNG pages downloaded as ZIP`)
+      onToast(`${pageCount} high-resolution PNG pages downloaded as ZIP`)
     } catch (error) {
       console.error('PNG export failed', error)
       onToast('This document could not be rendered as PNG pages')
@@ -715,18 +681,6 @@ function ExportStudio({
     includeWatermark = true,
   ) => {
     if (!captureRef.current) return
-    // Guarantee every diagram is rendered, then swap it for a pre-rasterized
-    // PNG — nested inline SVGs are unreliable through html-to-image's
-    // foreignObject serialization, plain raster images are not.
-    await initMermaid(captureRef.current, 'light', { watch: false })
-    await rasterizeMermaidDiagrams(captureRef.current)
-    // Oversized diagrams shrink to fit a single page so pagination never
-    // slices through them; boundaries must be computed after this.
-    fitMermaidDiagramsToPage(
-      captureRef.current,
-      getContentHeight(settings),
-      getContentWidth(settings),
-    )
     await document.fonts.ready
     const images = Array.from(captureRef.current.querySelectorAll('img'))
     await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
@@ -1311,20 +1265,6 @@ function App() {
     window.addEventListener('resize', checkPlatform)
     return () => window.removeEventListener('resize', checkPlatform)
   }, [])
-
-  // Keep mermaid diagrams in sync with the preview. Edits are debounced so a
-  // burst of keystrokes collapses into one render pass; theme and layout
-  // switches apply immediately. The diagram cache makes repeat runs cheap.
-  const mermaidMetaRef = useRef<{ theme: Theme; viewMode: ViewMode } | null>(null)
-  useEffect(() => {
-    const previous = mermaidMetaRef.current
-    mermaidMetaRef.current = { theme, viewMode }
-    const metaChanged = !previous || previous.theme !== theme || previous.viewMode !== viewMode
-    const timer = window.setTimeout(() => {
-      if (previewScrollRef.current) void initMermaid(previewScrollRef.current, theme)
-    }, metaChanged ? 0 : 180)
-    return () => window.clearTimeout(timer)
-  }, [rendered, theme, viewMode])
 
   const syncScrollPosition = (source: HTMLElement, target: HTMLElement) => {
     const sourceRange = source.scrollHeight - source.clientHeight

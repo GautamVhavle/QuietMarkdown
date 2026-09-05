@@ -86,7 +86,6 @@ test('prerenders crawlable body content with a single H1', () => {
   const text = rootHtml.replace(/<[^>]+>/g, ' ')
   expect(text.split(/\s+/).filter(Boolean).length).toBeGreaterThan(150)
   expect(text).toContain('Markdown editor')
-  expect(text.toLowerCase()).toContain('mermaid')
 })
 
 test('sitemap lists canonical URLs and robots.txt references it', async ({ request }) => {

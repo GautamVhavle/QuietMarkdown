@@ -21,7 +21,7 @@ src/
 ├── App.tsx                  # Editor shell, document library, Export Studio
 ├── components/              # ErrorBoundary and future isolated components
 ├── lib/
-│   ├── markdown.ts          # Sanitized rendering + real-time Mermaid engine
+│   ├── markdown.ts          # Sanitized Markdown rendering
 │   ├── export.ts            # Export presets, standalone HTML, downloads
 │   ├── pagination.ts        # Element-aware page-break computation
 │   └── storage.ts           # Quota-safe localStorage wrapper (always use it)
@@ -36,8 +36,7 @@ tests/editor.spec.ts         # Playwright workflows (desktop/tablet/mobile proje
 ### Conventions worth knowing
 
 - **All storage access goes through `lib/storage.ts`.** Direct `localStorage.setItem` calls throw under quota pressure; the wrapper converts failures into honest UI states.
-- **Mermaid diagrams are slot-based.** `renderMarkdown` stamps each fence with a stable `data-slot`; `initMermaid` renders into those slots with LRU caching keyed by theme + source. If you touch rendering, keep the self-healing MutationObserver behavior intact — React rewrites preview HTML wholesale.
-- **Exports rasterize diagrams first** (`rasterizeMermaidDiagrams`) because html-to-image fails on nested inline SVGs. Keep-together pagination (`KEEP_TOGETHER` in `pagination.ts`) prevents slicing diagrams across PDF pages.
+- **Keep-together pagination** (`KEEP_TOGETHER` in `pagination.ts`) prevents slicing tables, code blocks, and images across PDF pages.
 - **The service worker caches same-origin GETs.** When you change cached shell files, bump `CACHE_NAME` so clients pick up the new version.
 
 ## Local development

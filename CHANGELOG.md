@@ -4,6 +4,10 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ## [Unreleased]
 
+### Removed
+
+- Real-time Mermaid diagram rendering from the editor, preview, and exports
+
 ### Planned
 
 - Document folders & tagging within local storage

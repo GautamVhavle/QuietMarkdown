@@ -82,40 +82,12 @@ const draft: Draft = {
 
 ## 5.5. From idea to a shareable document
 
-QuietMarkdown can turn a rough idea into a clear, polished document. This diagram shows the loop: shape the structure, refine anything that is not ready, then export when the story is easy to follow.
+QuietMarkdown can turn a rough idea into a clear, polished document. Shape the structure, refine anything that is not ready, then export when the story is easy to follow.
 
-\`\`\`mermaid
-flowchart TD
-    A[Start: Define Outcome] --> B{Is scope clear?}
-    B -->|No| C[Refine brief & gather evidence]
-    C --> B
-    B -->|Yes| D[Draft structure: headings & sections]
-    D --> E[Write first pass]
-    E --> F{Review with audience}
-    F -->|Needs work| G[Revise & restructure]
-    G --> F
-    F -->|Clear| H[Polish: typography, code, tables, images]
-    H --> I[Choose export preset & watermark]
-    I --> J[Download PDF / HTML / PNG]
-    J --> K[Share with confidence]
-
-    style A fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#1f2937
-    style B fill:#ffffff,stroke:#6b7280,stroke-width:2px,color:#1f2937
-    style C fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#1f2937
-    style D fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1f2937
-    style E fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1f2937
-    style F fill:#ffffff,stroke:#6b7280,stroke-width:2px,color:#1f2937
-    style G fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#1f2937
-    style H fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1f2937
-    style I fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#1f2937
-    style J fill:#ffffff,stroke:#6b7280,stroke-width:2px,color:#1f2937
-    style K fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#1f2937
-
-    linkStyle default stroke:#808080,stroke-width:2px
-
-\`\`\`
-
-*Mermaid diagrams render in real-time as you type and are included in PDF, HTML, and PNG exports.*
+1. Define the outcome and audience.
+2. Draft headings and write a first pass.
+3. Review with the reader in mind — revise until the next step is obvious.
+4. Choose an export preset and watermark, then download PDF, HTML, or PNG.
 
 ---
 

@@ -18,7 +18,6 @@ test('loads a local-first document and renders Markdown', async ({ page }, testI
     await page.getByRole('button', { name: 'Preview' }).click()
   }
   await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
-  await expect(page.locator('.markdown-body .mermaid svg')).toHaveCount(1)
   const saveLabel = testInfo.project.name !== 'desktop-chromium'
     ? page.locator('.footer-save')
     : page.locator('.save-indicator')
@@ -134,12 +133,9 @@ test('opens a local Markdown file', async ({ page }, testInfo) => {
 test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'File integrity is covered once on desktop.')
   await page.getByLabel('Markdown content').fill(
-    '# Export proof\n\nA short document for file verification.\n\n```mermaid\ngraph TD\n  A[Alpha] --> B[Beta]\n```\n',
+    '# Export proof\n\nA short document for file verification.\n',
   )
   await page.getByRole('button', { name: 'Open export studio' }).click()
-
-  // The capture surface must hold a rendered diagram before exporting.
-  await expect(page.locator('.capture-host .mermaid svg')).toHaveCount(1)
 
   const htmlDownloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: /Download HTML/ }).click()
@@ -149,9 +145,6 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   const html = await readFile(htmlPath, 'utf8')
   expect(htmlDownload.suggestedFilename()).toMatch(/\.html$/)
   expect(html).toContain('<h1>Export proof</h1>')
-  // The diagram must ship as a self-contained rendered image, not a placeholder.
-  expect(html).toContain('data:image/svg+xml')
-  expect(html).not.toContain('class="mermaid" data-mermaid=')
   expect(html).not.toContain('watermark')
   expect(html).not.toContain('quietmark.vercel.app')
 
@@ -169,16 +162,11 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
 })
 
 test('switches theme and customizes export watermark', async ({ page }) => {
-  const diagram = page.locator('.markdown-body .mermaid svg')
-  await expect(diagram).toHaveCount(1)
-
   await page.getByLabel('Use dark theme').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(diagram).toHaveCount(1)
 
   await page.getByLabel('Use light theme').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  await expect(diagram).toHaveCount(1)
 
   await page.getByRole('button', { name: 'Export' }).first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -199,82 +187,6 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await page.getByRole('button', { name: 'Tiled' }).click()
   await expect(page.getByRole('dialog').getByText('CONFIDENTIAL').first()).toBeVisible()
   await expect(page.getByRole('button', { name: /Save as PDF/ })).toBeVisible()
-})
-
-test('updates Mermaid diagrams when their source changes', async ({ page }) => {
-  const editor = page.getByLabel('Markdown content')
-  const diagram = page.locator('.markdown-body .mermaid')
-  await expect(diagram.locator('svg')).toHaveCount(1)
-
-  const source = await editor.inputValue()
-  await editor.fill(source.replace('Share with confidence', 'Share with clarity'))
-
-  await expect(diagram.locator('svg')).toHaveCount(1)
-  await expect(diagram.locator('svg')).toContainText('Share with clarity')
-})
-
-test('renders Mermaid diagrams live character by character', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop-chromium', 'Live typing needs the split view.')
-  const editor = page.getByLabel('Markdown content')
-  const diagram = page.locator('.markdown-body .mermaid').first()
-  await editor.fill('')
-  await editor.focus()
-
-  // An unterminated fence still renders — diagrams appear before the closing ```
-  await editor.pressSequentially('```mermaid\ngraph TD')
-  await expect(diagram.locator('svg')).toHaveCount(1)
-
-  await editor.pressSequentially('\n  A[Alpha] --> B[Beta]')
-  await expect(diagram.locator('svg')).toContainText('Beta')
-
-  await editor.pressSequentially('\n  B --> C[Gamma]')
-  await expect(diagram.locator('svg')).toContainText('Gamma')
-})
-
-test('keeps the last good Mermaid frame while the syntax is invalid, then recovers', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop-chromium', 'Live typing needs the split view.')
-  const editor = page.getByLabel('Markdown content')
-  const diagram = page.locator('.markdown-body .mermaid').first()
-  await editor.fill('')
-  await editor.focus()
-
-  await editor.pressSequentially('```mermaid\ngraph TD\n  A[Alpha] --> B[Beta]')
-  await expect(diagram.locator('svg')).toContainText('Beta')
-
-  // Break the syntax mid-edit (unclosed bracket)…
-  await editor.pressSequentially('\n  C[Oops --> D[Dangling]')
-  await expect(diagram.locator('.mermaid-note')).toBeVisible()
-  // …the previous good diagram must stay on screen, not flash an error box.
-  await expect(diagram.locator('svg')).toHaveCount(1)
-  await expect(diagram.locator('svg')).toContainText('Beta')
-
-  // Remove the broken line — the diagram recovers without a reload.
-  for (let index = 0; index < '\n  C[Oops --> D[Dangling]'.length; index += 1) {
-    await editor.press('Backspace')
-  }
-  await expect(diagram.locator('.mermaid-note')).toHaveCount(0)
-  await expect(diagram.locator('svg')).toContainText('Beta')
-})
-
-test('renders multiple Mermaid diagrams and caches untouched ones', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop-chromium', 'Split view keeps both panes visible.')
-  const editor = page.getByLabel('Markdown content')
-  const diagrams = page.locator('.markdown-body .mermaid')
-
-  const source = await editor.inputValue()
-  await editor.fill(`${source}\n\n\`\`\`mermaid\npie title Snack votes\n  "Apples" : 42\n  "Bananas" : 27\n\`\`\`\n`)
-  await expect(diagrams).toHaveCount(2)
-  await expect(page.locator('.markdown-body .mermaid svg')).toHaveCount(2)
-  await expect(diagrams.nth(1)).toContainText('Apples')
-
-  // Editing the first diagram must not disturb the second.
-  const docWithPie = await editor.inputValue()
-  const secondSvgBefore = await diagrams.nth(1).locator('svg').innerHTML()
-  await editor.fill(docWithPie.replace('Share with confidence', 'Share with certainty'))
-  await expect(diagrams.nth(0).locator('svg')).toContainText('Share with certainty')
-  await expect(diagrams).toHaveCount(2)
-  await expect(diagrams.nth(1)).toContainText('Apples')
-  expect(await diagrams.nth(1).locator('svg').innerHTML()).toBe(secondSvgBefore)
 })
 
 test('creates, switches between, and deletes documents in the library', async ({ page }, testInfo) => {

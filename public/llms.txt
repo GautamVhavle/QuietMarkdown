@@ -1,6 +1,6 @@
 # QuietMarkdown
 
-> A free, private, local-first Markdown editor that runs entirely in the browser: live preview, real-time Mermaid diagrams, a multi-document library, and polished PDF, HTML, and PNG page exports with custom watermarks.
+> A free, private, local-first Markdown editor that runs entirely in the browser: live preview, a multi-document library, and polished PDF, HTML, and PNG page exports with custom watermarks.
 
 QuietMarkdown never uploads documents. Drafts live in browser storage, the app works offline after the first visit, and Markdown files remain the canonical source of truth.
 

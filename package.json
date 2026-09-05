@@ -3,12 +3,10 @@
   "private": true,
   "version": "1.1.0",
   "type": "module",
-  "description": "A private, local-first Markdown editor with real-time Mermaid diagrams and a watermark-first export studio (PDF, HTML, PNG pages).",
+  "description": "A private, local-first Markdown editor with a watermark-first export studio (PDF, HTML, PNG pages).",
   "keywords": [
     "markdown",
     "markdown-editor",
-    "mermaid",
-    "diagrams",
     "local-first",
     "offline",
     "pwa",
@@ -54,7 +52,6 @@
     "lucide-react": "latest",
     "markdown-it": "latest",
     "markdown-it-task-lists": "^2.1.1",
-    "mermaid": "^11.17.0",
     "pdf-lib": "^1.17.1",
     "react": "latest",
     "react-dom": "latest"

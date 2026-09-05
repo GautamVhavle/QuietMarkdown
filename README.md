@@ -39,7 +39,7 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 
 - **Private by design.** No account, backend, database, analytics, or document upload. Your words never leave your device.
 - **A library, not a lone note.** Keep many documents in one calm workspace.
-- **Fast where it matters.** Live split preview, real-time Mermaid diagrams, and instant find & replace.
+- **Fast where it matters.** Live split preview and instant find & replace.
 - **Files you own.** Open, drag & drop, paste images into, and download normal `.md` files. Markdown is the canonical source of truth.
 - **Export with confidence.** Styled standalone HTML, multipage PDF, and true 2× PNG pages — what the page preview shows is what you get.
 
@@ -61,20 +61,11 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 - Safe rendered output through DOMPurify sanitization
 - A built-in field guide that demonstrates every supported feature on first launch
 
-### Mermaid diagrams in real time
-
-Type a ` ```mermaid ` fence and watch it render live, character by character:
-
-- Instant re-rendering while you edit, with LRU caching so untouched diagrams never redraw
-- Graceful failure: invalid syntax keeps the last valid frame visible with a small warning chip, then recovers automatically when the syntax is fixed
-- Theme-aware restyling — diagrams follow light/dark mode
-- Diagrams are first-class citizens in exports (see below)
-
 ### A watermark-first export studio
 
 | Export | What you get |
 | --- | --- |
-| **PDF** | A direct multipage PDF download that matches the page preview, with element-aware pagination that keeps diagrams, tables, and code blocks intact across breaks |
+| **PDF** | A direct multipage PDF download that matches the page preview, with element-aware pagination that keeps tables, images, and code blocks intact across breaks |
 | **HTML** | A portable standalone document with selected styling and no watermark |
 | **PNG pages** | True 2× page images. Multi-page documents download as one ZIP containing numbered PNG files |
 
@@ -150,7 +141,7 @@ src/
 ├── components/
 │   └── ErrorBoundary.tsx    # Crash guard keeping drafts recoverable
 ├── lib/
-│   ├── markdown.ts          # Sanitized rendering + real-time Mermaid engine
+│   ├── markdown.ts          # Sanitized Markdown rendering
     ├── export.ts            # Portable HTML, styling presets, downloads
     ├── pagination.ts        # Element-aware page-break computation
     └── storage.ts           # Quota-safe localStorage wrapper
@@ -170,7 +161,6 @@ tests/                       # Playwright desktop/tablet/mobile workflows
 
 - **React + TypeScript + Vite** for a fast static client application
 - **markdown-it** and **markdown-it-task-lists** for focused GFM rendering
-- **Mermaid v11** loaded lazily so diagram code never slows first paint
 - **DOMPurify** to sanitize rendered Markdown and every export
 - **Highlight.js** with a deliberately small language set
 - **html-to-image**, **pdf-lib**, and **JSZip** for high-fidelity page-based exports
@@ -178,7 +168,7 @@ tests/                       # Playwright desktop/tablet/mobile workflows
 
 ### How exports stay pixel-honest
 
-The export pipeline renders each page exactly as the preview does: Markdown → sanitized HTML → Mermaid rasterization at 3× scale → element-aware pagination → per-page capture. Diagrams are converted to images before capture so nothing shifts between preview and print, and oversized diagrams are auto-fit to one page's content area instead of being sliced across two.
+The export pipeline renders each page exactly as the preview does: Markdown → sanitized HTML → element-aware pagination → per-page capture.
 
 ## Privacy
 

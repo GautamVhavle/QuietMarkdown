@@ -228,50 +228,8 @@ function PrivacySeal({ reduced }: SceneProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Scene 3 visual — capability grid with a self-drawing diagram        */
+/* Scene 3 visual — capability grid                                    */
 /* ------------------------------------------------------------------ */
-
-function MermaidSpark({ reduced }: SceneProps) {
-  const draw = (delay: number) =>
-    reduced
-      ? {}
-      : {
-          initial: { pathLength: 0, opacity: 0 },
-          animate: { pathLength: 1, opacity: 1 },
-          transition: { duration: 0.7, delay, repeat: Infinity, repeatType: 'loop' as const, repeatDelay: 2.4 },
-        }
-
-  const pop = (delay: number) =>
-    reduced
-      ? {}
-      : {
-          initial: { opacity: 0, scale: 0.5 },
-          animate: { opacity: 1, scale: 1 },
-          transition: { duration: 0.55, delay, ease: EASE_OUT, repeat: Infinity, repeatType: 'loop' as const, repeatDelay: 2.55 },
-        }
-
-  return (
-    <svg viewBox="0 0 190 74" width="180" height="70" className="mermaid-spark" aria-hidden="true">
-      {[{ x: 6, label: 'A' }, { x: 72, label: 'B' }, { x: 138, label: 'C' }].map((node, index) => (
-        <g key={node.label}>
-          <motion.rect
-            x={node.x} y="22" width="46" height="30" rx="8"
-            fill="var(--surface-solid)" stroke="var(--accent)" strokeWidth="1.5"
-            {...pop(index * 0.45)}
-          />
-          <motion.text
-            x={node.x + 23} y="41" textAnchor="middle" className="spark-node"
-            {...pop(index * 0.45)}
-          >
-            {node.label}
-          </motion.text>
-        </g>
-      ))}
-      <motion.path d="M52 37h18m0 0-4.5-4.5M70 37l-4.5 4.5" fill="none" stroke="var(--ink-faint)" strokeWidth="1.6" strokeLinecap="round" {...draw(0.55)} />
-      <motion.path d="M118 37h18m0 0-4.5-4.5M136 37l-4.5 4.5" fill="none" stroke="var(--ink-faint)" strokeWidth="1.6" strokeLinecap="round" {...draw(1)} />
-    </svg>
-  )
-}
 
 const CAPABILITIES = [
   { icon: Files, title: 'Many documents', note: 'Keep a whole library' },
@@ -297,7 +255,7 @@ function CapabilityTile({ icon: Icon, title, note }: { icon: typeof Files; title
   )
 }
 
-function SceneCapabilities({ reduced }: SceneProps) {
+function SceneCapabilities() {
   return (
     <SceneFrame
       eyebrow="Quietly capable"
@@ -307,13 +265,6 @@ function SceneCapabilities({ reduced }: SceneProps) {
       <div className="capability-grid">
         {CAPABILITIES.map((item) => <CapabilityTile key={item.title} {...item} />)}
       </div>
-      <motion.div variants={rise} className="mermaid-row">
-        <MermaidSpark reduced={reduced} />
-        <div className="mermaid-note">
-          <strong>Live Mermaid diagrams</strong>
-          <span>Flowcharts render as you type — and export perfectly.</span>
-        </div>
-      </motion.div>
       <div className="capability-grid">
         {CAPABILITIES_ROW_TWO.map((item) => <CapabilityTile key={item.title} {...item} />)}
       </div>
@@ -409,7 +360,7 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
     >
       <motion.div variants={rise}><PrivacySeal reduced={reduced} /></motion.div>
     </SceneFrame>,
-    <SceneCapabilities key="s2" reduced={reduced} />,
+    <SceneCapabilities key="s2" />,
     <SceneFrame
       key="s3"
       eyebrow="Export with confidence"

@@ -21,7 +21,7 @@ We credit reporters in the release notes by default; say so explicitly if you pr
 
 ## What is in scope
 
-- XSS through rendered Markdown, Mermaid diagrams, syntax highlighting, or exported HTML
+- XSS through rendered Markdown, syntax highlighting, or exported HTML
 - Bypassing sanitization (DOMPurify configuration) in preview or export paths
 - Service worker cache poisoning or unsafe fetch handling
 - Storage handling that could leak document contents across origins
