@@ -318,14 +318,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .paged-preview { display: flex; flex-direction: column; align-items: center; gap: 22px; }
 .paged-measure { position: absolute; left: -12000px; top: 0; pointer-events: none; }
-.paged-measure-page { overflow: visible !important; height: auto !important; }
 .paged-sheet-frame { position: relative; margin: 0; }
 .paged-sheet { position: absolute; top: 0; left: 0; transform-origin: top left; box-shadow: 0 10px 28px rgba(20, 19, 17, .14); }
-.paged-sheet-source { position: relative; z-index: 2; }
-.paged-sheet-mask { position: absolute; left: 0; right: 0; z-index: 20; pointer-events: none; }
-.paged-sheet-mask-top { top: 0; }
-.paged-sheet-mask-bottom { bottom: 0; }
-.paged-sheet-mask-flow { left: 0; width: 100%; }
 .paged-folio { margin: 8px 0 0; color: var(--ink-faint); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-align: center; text-transform: uppercase; }
 .paged-measure-page img, .paged-sheet img { max-height: var(--page-content-height); max-width: 100%; height: auto; width: auto; }
 
@@ -659,7 +653,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .export-action small { color: var(--ink-faint); font-size: 7px; }
 .export-action.primary { border-color: var(--ink); background: var(--ink); color: var(--surface); }
 .export-action.primary strong, .export-action.primary small { color: var(--surface); }
-.capture-host { position: fixed; top: 0; left: -10000px; width: 820px; pointer-events: none; }
+.capture-host { position: fixed; top: 0; left: -10000px; pointer-events: none; }
 .export-page-capture { box-shadow: none; transform: none !important; }
 .export-page-capture .live-watermark, .export-page-capture .live-watermark-grid,
 .png-page-source .live-watermark, .png-page-source .live-watermark-grid { display: none; }

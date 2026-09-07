@@ -61,7 +61,7 @@ import {
   paperSizeOptions,
   safeFilename,
 } from './lib/export'
-import { computePageBoundaries, fitReplacedElementsToPage, getContentHeight, getContentWidth } from './lib/pagination'
+import { paginateHtml } from './lib/pagination'
 import { PagedPreview } from './components/PagedPreview'
 import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
@@ -452,6 +452,7 @@ function ExportStudio({
     '--export-line-height': exportStyle.lineHeight,
     '--export-heading-weight': exportStyle.headingWeight,
     '--export-margin': `${settings.margin}px`,
+    '--page-content-height': `${dimensions.height - 2 * settings.margin}px`,
     width: `${dimensions.width}px`,
     minHeight: `${dimensions.height}px`,
   } as CSSProperties
@@ -685,64 +686,22 @@ function ExportStudio({
   ) => {
     if (!captureRef.current) return
     await document.fonts.ready
-    fitReplacedElementsToPage(
-      captureRef.current,
-      getContentHeight(settings),
-      getContentWidth(settings),
-    )
-    const images = Array.from(captureRef.current.querySelectorAll('img'))
-    await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
-
-    // Compute smart page boundaries that respect element boundaries
-    const boundaries = computePageBoundaries(captureRef.current, settings)
-    const pageCount = boundaries.length
+    const pageHtmls = paginateHtml(rendered, settings, captureRef.current)
+    const article = captureRef.current.querySelector<HTMLElement>('.export-document')
+    if (!article || pageHtmls.length === 0) return
     const pixelRatio = 2
     const { toCanvas } = await import('html-to-image')
-    const viewport = document.createElement('div')
-    const pageSource = captureRef.current.cloneNode(true) as HTMLDivElement
-    viewport.className = 'export-page-viewport'
-    viewport.style.cssText = `position:fixed;left:0;top:0;z-index:-1;width:${dimensions.width}px;height:${dimensions.height}px;overflow:hidden;background:${exportStyle.background};pointer-events:none;`
-    pageSource.classList.remove('export-page-capture')
-    pageSource.classList.add('png-page-source')
-    pageSource.style.position = 'absolute'
-    pageSource.style.top = '0'
-    pageSource.style.left = '0'
-    // Set height to cover all pages
-    const totalHeight = pageCount * dimensions.height
-    pageSource.style.height = `${totalHeight}px`
-    pageSource.style.minHeight = `${totalHeight}px`
-    pageSource.style.transformOrigin = 'top left'
-    viewport.append(pageSource)
-
-    // The source document is continuous, but each physical page has its own
-    // top and bottom margins. These masks hide the tail of the previous page
-    // and anything below the current content area while html-to-image captures
-    // the viewport.
-    const topMask = document.createElement('div')
-    const bottomMask = document.createElement('div')
-    topMask.style.cssText = `position:absolute;inset:0 0 auto;height:${settings.margin}px;background:${exportStyle.background};z-index:20;pointer-events:none;`
-    bottomMask.style.cssText = `position:absolute;inset:auto 0 0;height:${settings.margin}px;background:${exportStyle.background};z-index:20;pointer-events:none;`
-    // Keep-together blocks moved to the next page leave their head behind in
-    // the current page's content area — the flow mask paints that region over.
-    const flowMask = document.createElement('div')
-    flowMask.style.cssText = `position:absolute;left:0;width:100%;background:${exportStyle.background};z-index:20;pointer-events:none;display:none;`
-    viewport.append(topMask, bottomMask, flowMask)
-    document.body.append(viewport)
+    const page = captureRef.current
+    page.style.height = `${dimensions.height}px`
+    page.style.maxHeight = `${dimensions.height}px`
+    page.style.overflow = 'hidden'
 
     try {
-      for (let index = 0; index < pageCount; index += 1) {
-        const boundary = boundaries[index]
-        // Translate so the page's content area aligns with viewport top
-        // boundary.top is the page start in the full document (including margin)
-        pageSource.style.transform = `translate3d(0, -${boundary.top}px, 0)`
-        if (boundary.blankFrom !== undefined) {
-          flowMask.style.display = 'block'
-          flowMask.style.top = `${Math.max(0, boundary.blankFrom - boundary.top)}px`
-          flowMask.style.height = `${Math.ceil(boundary.bottom - boundary.blankFrom)}px`
-        } else {
-          flowMask.style.display = 'none'
-        }
-        const canvas = await toCanvas(viewport, {
+      for (let index = 0; index < pageHtmls.length; index += 1) {
+        article.innerHTML = pageHtmls[index]
+        const images = Array.from(captureRef.current.querySelectorAll('img'))
+        await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
+        const canvas = await toCanvas(captureRef.current, {
           cacheBust: false,
           pixelRatio,
           backgroundColor: exportStyle.background,
@@ -755,10 +714,13 @@ function ExportStudio({
         const context = canvas.getContext('2d')
         if (!context) throw new Error('Canvas is unavailable')
         if (includeWatermark) drawExportWatermark(context, canvas.width, canvas.height, pixelRatio)
-        await processPage(canvas, index, pageCount)
+        await processPage(canvas, index, pageHtmls.length)
       }
     } finally {
-      viewport.remove()
+      article.innerHTML = rendered
+      page.style.height = ''
+      page.style.maxHeight = ''
+      page.style.overflow = ''
     }
   }
 
@@ -1029,7 +991,7 @@ function ExportStudio({
           </div>
         </footer>
       </section>
-      <div className="capture-host" aria-hidden="true">
+      <div className="capture-host" aria-hidden="true" style={{ width: dimensions.width }}>
         <ExportPage
           pageStyle={pageStyle}
           rendered={rendered}

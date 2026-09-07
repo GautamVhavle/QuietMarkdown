@@ -10,7 +10,7 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ### Changed
 
-- PDF/PNG pagination now splits on complete lines, list items, and table rows, keeps headings with the following block, and masks leftover content so text is not sliced through a glyph
+- PDF/PNG pagination fills real pages until the browser reports overflow, then splits at the last complete line, list item, or table row — no more clipping a continuous HTML sheet through glyphs
 
 ### Removed
 

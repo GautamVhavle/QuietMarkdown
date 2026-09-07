@@ -1,12 +1,6 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getExportStyle, pageDimensions } from '../lib/export'
-import {
-  computePageBoundaries,
-  fitReplacedElementsToPage,
-  getContentHeight,
-  getContentWidth,
-  type PageBoundary,
-} from '../lib/pagination'
+import { paginateHtml } from '../lib/pagination'
 import type { ExportSettings } from '../types'
 
 function pageStyleFor(settings: ExportSettings): CSSProperties {
@@ -25,8 +19,10 @@ function pageStyleFor(settings: ExportSettings): CSSProperties {
     '--export-margin': `${settings.margin}px`,
     '--page-content-height': `${dimensions.height - 2 * settings.margin}px`,
     width: `${dimensions.width}px`,
+    height: `${dimensions.height}px`,
     minHeight: `${dimensions.height}px`,
-    height: 'auto',
+    maxHeight: `${dimensions.height}px`,
+    overflow: 'hidden',
     background: exportStyle.background,
   } as CSSProperties
 }
@@ -39,11 +35,9 @@ interface PagedPreviewProps {
 export function PagedPreview({ html, settings }: PagedPreviewProps) {
   const measureRef = useRef<HTMLDivElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
-  const [boundaries, setBoundaries] = useState<PageBoundary[]>([])
-  const [fittedHtml, setFittedHtml] = useState(html)
+  const [pages, setPages] = useState<string[]>([html])
   const [scale, setScale] = useState(0.5)
   const dimensions = pageDimensions[settings.paper]
-  const exportStyle = getExportStyle(settings)
   const pageStyle = pageStyleFor(settings)
 
   useLayoutEffect(() => {
@@ -53,10 +47,7 @@ export function PagedPreview({ html, settings }: PagedPreviewProps) {
       if (cancelled) return
       const measure = measureRef.current
       if (!measure) return
-      fitReplacedElementsToPage(measure, getContentHeight(settings), getContentWidth(settings))
-      const article = measure.querySelector('.export-document')
-      setFittedHtml(article?.innerHTML ?? html)
-      setBoundaries(computePageBoundaries(measure, settings))
+      setPages(paginateHtml(html, settings, measure))
     }
     void run()
     return () => {
@@ -77,7 +68,7 @@ export function PagedPreview({ html, settings }: PagedPreviewProps) {
     return () => observer.disconnect()
   }, [dimensions.width])
 
-  const pages = boundaries.length > 0 ? boundaries : [{ top: 0, bottom: dimensions.height }]
+  const sheets = pages.length > 0 ? pages : ['']
 
   return (
     <div ref={hostRef} className="paged-preview">
@@ -87,13 +78,13 @@ export function PagedPreview({ html, settings }: PagedPreviewProps) {
           className={`export-page-live export-preset-${settings.preset} export-page-capture paged-measure-page`}
           style={pageStyle}
         >
-          <article className="export-document" dangerouslySetInnerHTML={{ __html: html }} />
+          <article className="export-document" />
         </div>
       </div>
 
-      {pages.map((boundary, index) => (
+      {sheets.map((pageHtml, index) => (
         <figure
-          key={`${boundary.top}-${index}`}
+          key={`${index}-${pageHtml.length}`}
           className="paged-sheet-frame"
           style={{
             width: dimensions.width * scale,
@@ -104,38 +95,16 @@ export function PagedPreview({ html, settings }: PagedPreviewProps) {
             className={`export-page-live export-preset-${settings.preset} paged-sheet`}
             style={{
               ...pageStyle,
-              height: `${dimensions.height}px`,
-              minHeight: `${dimensions.height}px`,
-              overflow: 'hidden',
               transform: `scale(${scale})`,
             }}
           >
             <article
-              className="export-document paged-sheet-source"
-              style={{ transform: `translate3d(0, -${boundary.top}px, 0)` }}
-              dangerouslySetInnerHTML={{ __html: fittedHtml }}
+              className="export-document"
+              dangerouslySetInnerHTML={{ __html: pageHtml }}
             />
-            <div
-              className="paged-sheet-mask paged-sheet-mask-top"
-              style={{ height: settings.margin, background: exportStyle.background }}
-            />
-            <div
-              className="paged-sheet-mask paged-sheet-mask-bottom"
-              style={{ height: settings.margin, background: exportStyle.background }}
-            />
-            {boundary.blankFrom !== undefined && (
-              <div
-                className="paged-sheet-mask paged-sheet-mask-flow"
-                style={{
-                  top: Math.max(0, boundary.blankFrom - boundary.top),
-                  height: Math.ceil(boundary.bottom - boundary.blankFrom),
-                  background: exportStyle.background,
-                }}
-              />
-            )}
           </div>
           <figcaption className="paged-folio">
-            Page {index + 1} of {pages.length} · {settings.paper.toUpperCase()}
+            Page {index + 1} of {sheets.length} · {settings.paper.toUpperCase()}
           </figcaption>
         </figure>
       ))}
