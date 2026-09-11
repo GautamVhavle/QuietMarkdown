@@ -10,6 +10,15 @@ export type ExportPreset =
   | 'executive'
   | 'notebook'
 export type ExportFont = 'serif' | 'classic' | 'sans' | 'humanist' | 'mono' | 'typewriter'
+export type PdfTemplateId =
+  | 'literary'
+  | 'report'
+  | 'thesis'
+  | 'memo'
+  | 'notes'
+  | 'letter'
+  | 'spec'
+  | 'folio'
 export type PaperSize = 'a5' | 'a4' | 'a3' | 'letter' | 'legal' | 'tabloid'
 export type WatermarkPosition =
   | 'center'
@@ -31,6 +40,7 @@ export interface WatermarkSettings {
 
 export interface ExportSettings {
   preset: ExportPreset
+  pdfTemplate: PdfTemplateId
   font: ExportFont
   paper: PaperSize
   margin: number
@@ -41,9 +51,10 @@ export interface ExportSettings {
 
 export const defaultExportSettings: ExportSettings = {
   preset: 'editorial',
+  pdfTemplate: 'literary',
   font: 'serif',
   paper: 'a4',
-  margin: 64,
+  margin: 76,
   accent: '#d85b3f',
   background: '#ffffff',
   watermark: {
@@ -59,6 +70,9 @@ export const defaultExportSettings: ExportSettings = {
 
 const EXPORT_PRESETS: ExportPreset[] = [
   'editorial', 'minimal', 'academic', 'manuscript', 'swiss', 'letterpress', 'executive', 'notebook',
+]
+const PDF_TEMPLATE_IDS: PdfTemplateId[] = [
+  'literary', 'report', 'thesis', 'memo', 'notes', 'letter', 'spec', 'folio',
 ]
 const EXPORT_FONTS: ExportFont[] = ['serif', 'classic', 'sans', 'humanist', 'mono', 'typewriter']
 export const PAPER_SIZES: PaperSize[] = ['a5', 'a4', 'a3', 'letter', 'legal', 'tabloid']
@@ -91,6 +105,7 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
 
   return {
     preset: pick(parsed.preset, EXPORT_PRESETS, defaults.preset),
+    pdfTemplate: pick(parsed.pdfTemplate, PDF_TEMPLATE_IDS, defaults.pdfTemplate),
     font: pick(parsed.font, EXPORT_FONTS, defaults.font),
     paper: pick(parsed.paper, PAPER_SIZES, defaults.paper),
     margin: Math.round(clamp(parsed.margin, 36, 104, defaults.margin)),

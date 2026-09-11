@@ -62,6 +62,8 @@ import {
   safeFilename,
 } from './lib/export'
 import { paginateHtml } from './lib/pagination'
+import { createMarkdownPdf } from './lib/pdf-document'
+import { PDF_TEMPLATES, getPdfTemplate } from './lib/pdf-templates'
 import { PagedPreview } from './components/PagedPreview'
 import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
@@ -70,6 +72,7 @@ import {
   defaultExportSettings,
   normalizeExportSettings,
   type ExportSettings,
+  type PdfTemplateId,
   type Theme,
   type ViewMode,
   type WatermarkPosition,
@@ -306,23 +309,6 @@ const loadSettings = () => {
   return defaultExportSettings
 }
 
-function parseWatermarkColor(color: string): { r: number; g: number; b: number } {
-  const hex = color.trim().replace('#', '')
-  const full = hex.length === 3 ? hex.split('').map((char) => char + char).join('') : hex
-  if (!/^[0-9a-fA-F]{6}$/.test(full)) return { r: 0.56, g: 0.26, b: 0.2 }
-  return {
-    r: Number.parseInt(full.slice(0, 2), 16) / 255,
-    g: Number.parseInt(full.slice(2, 4), 16) / 255,
-    b: Number.parseInt(full.slice(4, 6), 16) / 255,
-  }
-}
-
-/** Standard PDF fonts only encode WinAnsi. Drop anything else so export never throws. */
-function pdfSafeText(text: string): string {
-  const safe = text.replace(/[^\u0020-\u007E\u00A0-\u00FF]/g, '').trim()
-  return safe || 'WATERMARK'
-}
-
 const getInitialTheme = (): Theme => {
   let stored: string | null = null
   try {
@@ -398,19 +384,45 @@ interface ExportPageProps {
   settings: ExportSettings
   capture?: boolean
   captureRef?: RefObject<HTMLDivElement | null>
+  showWatermark?: boolean
 }
 
-function ExportPage({ pageStyle, rendered, settings, capture = false, captureRef }: ExportPageProps) {
+function ExportPage({
+  pageStyle,
+  rendered,
+  settings,
+  capture = false,
+  captureRef,
+  showWatermark = true,
+}: ExportPageProps) {
   return (
     <div
       ref={capture ? captureRef : undefined}
       className={`export-page-live export-preset-${settings.preset}${capture ? ' export-page-capture' : ''}`}
       style={pageStyle}
     >
-      <Watermark settings={settings} />
+      {showWatermark && <Watermark settings={settings} />}
       <article className="export-document" dangerouslySetInnerHTML={{ __html: rendered }} />
     </div>
   )
+}
+
+function pdfFontStack(font: ExportSettings['font']): string {
+  if (font === 'mono' || font === 'typewriter') return '"Courier New", Courier, monospace'
+  if (font === 'sans' || font === 'humanist') return 'Helvetica, Arial, sans-serif'
+  return 'Times, "Times New Roman", Georgia, serif'
+}
+
+function plainPreviewText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 interface ExportStudioProps {
@@ -435,8 +447,11 @@ function ExportStudio({
   const captureRef = useRef<HTMLDivElement>(null)
   const exportPreviewRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
+  const [exportTab, setExportTab] = useState<'pdf' | 'html' | 'png'>('pdf')
+  const pdfTemplate = getPdfTemplate(settings.pdfTemplate)
   const closeStudio = () => {
     if (exporting) return
+    setExportTab('pdf')
     onClose()
   }
   const dimensions = pageDimensions[settings.paper]
@@ -460,7 +475,9 @@ function ExportStudio({
   useEffect(() => {
     if (!open) return
     const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && !exporting) onClose()
+      if (event.key !== 'Escape' || exporting) return
+      setExportTab('pdf')
+      onClose()
     }
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
@@ -470,6 +487,16 @@ function ExportStudio({
 
   const updateSettings = <K extends keyof ExportSettings>(key: K, value: ExportSettings[K]) => {
     onSettingsChange({ ...settings, [key]: value })
+  }
+
+  const choosePdfTemplate = (id: PdfTemplateId) => {
+    const template = getPdfTemplate(id)
+    onSettingsChange({
+      ...settings,
+      pdfTemplate: template.id,
+      paper: template.paper,
+      margin: template.margin,
+    })
   }
 
   const choosePreset = (preset: ExportSettings['preset']) => {
@@ -511,71 +538,18 @@ function ExportStudio({
   }
 
   const exportPdf = async () => {
-    if (!captureRef.current) return
     setExporting('pdf')
     try {
-      const { PDFDocument, StandardFonts, degrees, rgb } = await import('pdf-lib')
-      const pdf = await PDFDocument.create()
-      const font = await pdf.embedFont(StandardFonts.HelveticaBold)
-      pdf.setTitle(title || 'Untitled document')
-      pdf.setSubject('Created locally with QuietMarkdown')
-      pdf.setAuthor('QuietMarkdown')
-      pdf.setCreator('quietmark.vercel.app')
-      pdf.setProducer('QuietMarkdown')
-
-      const parsedColor = parseWatermarkColor(settings.watermark.color)
-      const watermarkColor = rgb(parsedColor.r, parsedColor.g, parsedColor.b)
-      const watermark = settings.watermark
-
-      await renderExportPages(async (canvas) => {
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((value) => (value ? resolve(value) : reject(new Error('PDF page encoding failed'))), 'image/png')
-        })
-        const image = await pdf.embedPng(await blob.arrayBuffer())
-        const page = pdf.addPage([dimensions.width, dimensions.height])
-        page.drawImage(image, { x: 0, y: 0, width: dimensions.width, height: dimensions.height })
-
-        if (watermark.enabled && watermark.text.trim()) {
-          const text = pdfSafeText(watermark.text)
-          let size = watermark.size
-          let textWidth = font.widthOfTextAtSize(text, size)
-          const maxWidth = dimensions.width * 0.82
-          if (textWidth > maxWidth) {
-            size *= maxWidth / textWidth
-            textWidth = font.widthOfTextAtSize(text, size)
-          }
-          const options = { font, size, color: watermarkColor, opacity: watermark.opacity, rotate: degrees(watermark.rotation) }
-          const padding = 54
-          if (watermark.position === 'tiled') {
-            const stepX = Math.max(180, size * 2.8)
-            const stepY = Math.max(130, size * 2)
-            for (let y = -stepY; y < dimensions.height + stepY; y += stepY) {
-              for (let x = -stepX; x < dimensions.width + stepX; x += stepX) {
-                page.drawText(text, { x, y, ...options })
-              }
-            }
-          } else {
-            const positions = {
-              center: [(dimensions.width - textWidth) / 2, dimensions.height / 2],
-              'top-left': [padding, dimensions.height - padding - size],
-              'top-right': [dimensions.width - padding - textWidth, dimensions.height - padding - size],
-              'bottom-left': [padding, padding],
-              'bottom-right': [dimensions.width - padding - textWidth, padding],
-            } as const
-            const [x, y] = positions[watermark.position]
-            page.drawText(text, { x, y, ...options })
-          }
-        }
-        canvas.width = 1
-        canvas.height = 1
-      }, false)
-
-      if (pdf.getPageCount() === 0) throw new Error('PDF export produced no pages')
-      const bytes = await pdf.save({ useObjectStreams: true })
+      const bytes = await createMarkdownPdf(title, rendered, settings)
+      if (bytes.byteLength < 8) throw new Error('PDF export produced no pages')
       const pdfBytes = new Uint8Array(bytes.byteLength)
       pdfBytes.set(bytes)
       downloadBlob(pdfBytes.buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
-      onToast('PDF downloaded with a watermark on every page')
+      onToast(
+        settings.watermark.enabled && settings.watermark.text.trim()
+          ? 'PDF downloaded as a real document with a watermark on every page'
+          : 'PDF downloaded as a real document',
+      )
     } catch (error) {
       console.error('PDF export failed', error)
       onToast('This document could not be rendered as a PDF')
@@ -744,6 +718,107 @@ function ExportStudio({
     { value: 'bottom-right', label: 'Bottom right' },
   ]
 
+  const previewPlain = plainPreviewText(rendered)
+  const pdfExcerpt = previewPlain.slice(0, 280) || 'The downloaded file is a real PDF typeset from this template: selectable text, true paper size, and page breaks between complete lines.'
+
+  const watermarkSection = (
+    <section className="control-section watermark-section">
+      <div className="section-heading watermark-heading">
+        <div>
+          <h3>Watermark</h3>
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle watermark"
+            aria-checked={settings.watermark.enabled}
+            className={`switch ${settings.watermark.enabled ? 'on' : ''}`}
+            onClick={() => updateWatermark('enabled', !settings.watermark.enabled)}
+          >
+            <i />
+          </button>
+        </div>
+      </div>
+
+      <p className="watermark-scope">
+        {exportTab === 'pdf' ? 'Printed as PDF text on every page.' : 'Drawn on every PNG page. HTML stays clean.'}
+      </p>
+      <div className={settings.watermark.enabled ? '' : 'controls-disabled'}>
+        <label className="text-field">
+          <span>Watermark text</span>
+          <input
+            type="text"
+            maxLength={42}
+            value={settings.watermark.text}
+            placeholder="DRAFT, CONFIDENTIAL…"
+            onChange={(event) => updateWatermark('text', event.target.value)}
+          />
+        </label>
+
+        <div className="position-grid" aria-label="Watermark position">
+          {positionOptions.map((position) => (
+            <button
+              key={position.value}
+              type="button"
+              className={settings.watermark.position === position.value ? 'selected' : ''}
+              onClick={() => updateWatermark('position', position.value)}
+            >
+              <span className={`position-icon position-${position.value}`}><i /></span>
+              {position.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="field-row watermark-ranges">
+          <label className="range-field">
+            <span><span>Opacity</span><output>{Math.round(settings.watermark.opacity * 100)}%</output></span>
+            <input
+              type="range"
+              min="0.03"
+              max="0.35"
+              step="0.01"
+              value={settings.watermark.opacity}
+              onChange={(event) => updateWatermark('opacity', Number(event.target.value))}
+            />
+          </label>
+          <label className="range-field">
+            <span><span>Size</span><output>{settings.watermark.size}px</output></span>
+            <input
+              type="range"
+              min="24"
+              max="120"
+              value={settings.watermark.size}
+              onChange={(event) => updateWatermark('size', Number(event.target.value))}
+            />
+          </label>
+        </div>
+
+        <div className="field-row watermark-ranges">
+          <label className="range-field">
+            <span><span>Rotation</span><output>{settings.watermark.rotation}°</output></span>
+            <input
+              type="range"
+              min="-60"
+              max="60"
+              value={settings.watermark.rotation}
+              onChange={(event) => updateWatermark('rotation', Number(event.target.value))}
+            />
+          </label>
+          <label>
+            <span>Color</span>
+            <span className="color-field">
+              <input
+                type="color"
+                value={settings.watermark.color}
+                onChange={(event) => updateWatermark('color', event.target.value)}
+              />
+              <span>{settings.watermark.color}</span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </section>
+  )
+
   return (
     <div className="modal-backdrop" onMouseDown={closeStudio}>
       <section
@@ -769,209 +844,317 @@ function ExportStudio({
           </button>
         </header>
 
+        <div className="export-tabs" role="tablist" aria-label="Export format">
+          {([
+            ['pdf', 'PDF', 'Typeset document'],
+            ['html', 'HTML', 'Styled webpage'],
+            ['png', 'PNG', 'Page images'],
+          ] as const).map(([id, label, hint], index, tabs) => (
+            <button
+              key={id}
+              type="button"
+              id={`export-tab-${id}`}
+              role="tab"
+              aria-selected={exportTab === id}
+              aria-controls={`export-panel-${id}`}
+              tabIndex={exportTab === id ? 0 : -1}
+              className={`export-tab ${exportTab === id ? 'on' : ''}`}
+              onClick={() => setExportTab(id)}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+                event.preventDefault()
+                const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length][0]
+                setExportTab(next)
+                document.getElementById(`export-tab-${next}`)?.focus()
+              }}
+            >
+              <strong>{label}</strong>
+              <small>{hint}</small>
+            </button>
+          ))}
+        </div>
+
         <div className="export-body">
           <div className="export-controls scrollable">
-            <section className="control-section">
-              <div className="section-heading">
-                <div><span>01</span><h3>Style</h3></div>
-                <p>Choose a considered starting point.</p>
-              </div>
-              <div className="preset-row" role="list" aria-label="Document styles">
-                {presetOptions.map((preset) => (
-                  <button
-                    key={preset.value}
-                    className={`preset-card ${settings.preset === preset.value ? 'selected' : ''}`}
-                    onClick={() => choosePreset(preset.value)}
-                  >
-                    <span className={`preset-swatch ${preset.value}`}>
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                    <span className="preset-copy">
-                      <strong>{preset.label}</strong>
-                      <small>{preset.detail}</small>
-                    </span>
-                    {settings.preset === preset.value && <Check size={14} />}
-                  </button>
-                ))}
-              </div>
-
-              <div className="field-row four-up">
-                <label>
-                  <span>Typeface</span>
-                  <select
-                    value={settings.font}
-                    onChange={(event) => updateSettings('font', event.target.value as ExportSettings['font'])}
-                  >
-                    <option value="serif">Literary</option>
-                    <option value="classic">Classic serif</option>
-                    <option value="sans">Modern sans</option>
-                    <option value="humanist">Humanist</option>
-                    <option value="mono">Monospace</option>
-                    <option value="typewriter">Typewriter</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Paper</span>
-                  <select
-                    value={settings.paper}
-                    onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
-                  >
-                    {paperSizeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Accent</span>
-                  <span className="color-field">
-                    <input
-                      type="color"
-                      value={settings.accent}
-                      onChange={(event) => updateSettings('accent', event.target.value)}
-                      aria-label="Accent color"
-                    />
-                    <span>{settings.accent}</span>
-                  </span>
-                </label>
-                <label>
-                  <span>Page</span>
-                  <span className="color-field">
-                    <input
-                      type="color"
-                      value={settings.background}
-                      onChange={(event) => updateSettings('background', event.target.value)}
-                      aria-label="Page background color"
-                    />
-                    <span>{settings.background}</span>
-                  </span>
-                </label>
-              </div>
-
-              <label className="range-field">
-                <span><span>Page margin</span><output>{settings.margin}px</output></span>
-                <input
-                  type="range"
-                  min="36"
-                  max="104"
-                  value={settings.margin}
-                  onChange={(event) => updateSettings('margin', Number(event.target.value))}
-                />
-              </label>
-            </section>
-
-            <section className="control-section watermark-section">
-              <div className="section-heading watermark-heading">
-                <div>
-                  <span>02</span>
-                  <h3>Watermark</h3>
-                  <button
-                    role="switch"
-                    aria-label="Toggle watermark"
-                    aria-checked={settings.watermark.enabled}
-                    className={`switch ${settings.watermark.enabled ? 'on' : ''}`}
-                    onClick={() => updateWatermark('enabled', !settings.watermark.enabled)}
-                  >
-                    <i />
-                  </button>
+            {exportTab === 'pdf' && (
+              <div role="tabpanel" id="export-panel-pdf" aria-labelledby="export-tab-pdf">
+              <section className="control-section">
+                <p className="export-note">PDF is typeset as its own document. It will not match the HTML page, so it has its own templates.</p>
+                <div className="section-heading">
+                  <div><h3>Templates</h3></div>
+                  <p>Pick one. Paper and watermark can still be adjusted.</p>
                 </div>
-              </div>
-
-              <p className="watermark-scope">Applied to every PDF and PNG page. HTML and Markdown stay clean.</p>
-              <div className={settings.watermark.enabled ? '' : 'controls-disabled'}>
-                <label className="text-field">
-                  <span>Watermark text</span>
-                  <input
-                    type="text"
-                    maxLength={42}
-                    value={settings.watermark.text}
-                    placeholder="DRAFT, CONFIDENTIAL…"
-                    onChange={(event) => updateWatermark('text', event.target.value)}
-                  />
-                </label>
-
-                <div className="position-grid" aria-label="Watermark position">
-                  {positionOptions.map((position) => (
+                <div className="pdf-template-grid" role="list" aria-label="PDF templates">
+                  {PDF_TEMPLATES.map((template) => (
                     <button
-                      key={position.value}
-                      className={settings.watermark.position === position.value ? 'selected' : ''}
-                      onClick={() => updateWatermark('position', position.value)}
+                      key={template.id}
+                      type="button"
+                      aria-pressed={settings.pdfTemplate === template.id}
+                      className={`pdf-template-card ${settings.pdfTemplate === template.id ? 'selected' : ''}`}
+                      onClick={() => choosePdfTemplate(template.id)}
                     >
-                      <span className={`position-icon position-${position.value}`}><i /></span>
-                      {position.label}
+                      <span
+                        className={`pdf-mini pdf-mini-${template.chrome}`}
+                        style={{
+                          background: template.background,
+                          color: template.body,
+                          ['--mini-accent' as string]: template.accent,
+                          ['--mini-rule' as string]: template.rule,
+                        }}
+                        aria-hidden="true"
+                      >
+                        <b
+                          style={{
+                            background: template.heading,
+                            width: template.h1Align === 'center' ? '56%' : '80%',
+                            alignSelf: template.h1Align === 'center' ? 'center' : 'flex-start',
+                          }}
+                        />
+                        <i style={{ background: template.body }} />
+                        <i style={{ background: template.body }} />
+                        <i style={{ width: '62%', background: template.muted }} />
+                        <em style={{ background: template.accent }} />
+                      </span>
+                      <span className="preset-copy">
+                        <strong>{template.label}</strong>
+                        <small>{template.detail}</small>
+                      </span>
+                      {settings.pdfTemplate === template.id && <Check size={14} />}
                     </button>
                   ))}
                 </div>
-
-                <div className="field-row watermark-ranges">
-                  <label className="range-field">
-                    <span><span>Opacity</span><output>{Math.round(settings.watermark.opacity * 100)}%</output></span>
-                    <input
-                      type="range"
-                      min="0.03"
-                      max="0.35"
-                      step="0.01"
-                      value={settings.watermark.opacity}
-                      onChange={(event) => updateWatermark('opacity', Number(event.target.value))}
-                    />
+                <div className="field-row two-up">
+                  <label>
+                    <span>Paper</span>
+                    <select
+                      value={settings.paper}
+                      onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
+                    >
+                      {paperSizeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="range-field">
-                    <span><span>Size</span><output>{settings.watermark.size}px</output></span>
+                    <span><span>Margin</span><output>{settings.margin}px</output></span>
                     <input
                       type="range"
-                      min="24"
-                      max="120"
-                      value={settings.watermark.size}
-                      onChange={(event) => updateWatermark('size', Number(event.target.value))}
+                      min="36"
+                      max="104"
+                      value={settings.margin}
+                      onChange={(event) => updateSettings('margin', Number(event.target.value))}
                     />
                   </label>
                 </div>
+              </section>
+              {watermarkSection}
+              </div>
+            )}
 
-                <div className="field-row watermark-ranges">
-                  <label className="range-field">
-                    <span><span>Rotation</span><output>{settings.watermark.rotation}°</output></span>
-                    <input
-                      type="range"
-                      min="-60"
-                      max="60"
-                      value={settings.watermark.rotation}
-                      onChange={(event) => updateWatermark('rotation', Number(event.target.value))}
-                    />
+            {exportTab === 'html' && (
+              <div role="tabpanel" id="export-panel-html" aria-labelledby="export-tab-html">
+              <section className="control-section">
+                <p className="export-note">HTML is a styled webpage. These looks belong to HTML and PNG, not to the PDF file.</p>
+                <div className="section-heading">
+                  <div><h3>Page style</h3></div>
+                  <p>Live preview and PNG pages share this style.</p>
+                </div>
+                <div className="preset-row" role="list" aria-label="Document styles">
+                  {presetOptions.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      className={`preset-card ${settings.preset === preset.value ? 'selected' : ''}`}
+                      onClick={() => choosePreset(preset.value)}
+                    >
+                      <span className={`preset-swatch ${preset.value}`}>
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="preset-copy">
+                        <strong>{preset.label}</strong>
+                        <small>{preset.detail}</small>
+                      </span>
+                      {settings.preset === preset.value && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+                <div className="field-row four-up">
+                  <label>
+                    <span>Typeface</span>
+                    <select
+                      value={settings.font}
+                      onChange={(event) => updateSettings('font', event.target.value as ExportSettings['font'])}
+                      aria-label="Typeface"
+                    >
+                      <option value="serif">Literary</option>
+                      <option value="classic">Classic serif</option>
+                      <option value="sans">Modern sans</option>
+                      <option value="humanist">Humanist</option>
+                      <option value="mono">Monospace</option>
+                      <option value="typewriter">Typewriter</option>
+                    </select>
                   </label>
                   <label>
-                    <span>Color</span>
+                    <span>Paper</span>
+                    <select
+                      value={settings.paper}
+                      onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
+                    >
+                      {paperSizeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Accent</span>
                     <span className="color-field">
                       <input
                         type="color"
-                        value={settings.watermark.color}
-                        onChange={(event) => updateWatermark('color', event.target.value)}
+                        value={settings.accent}
+                        onChange={(event) => updateSettings('accent', event.target.value)}
+                        aria-label="Accent color"
                       />
-                      <span>{settings.watermark.color}</span>
+                      <span>{settings.accent}</span>
+                    </span>
+                  </label>
+                  <label>
+                    <span>Page</span>
+                    <span className="color-field">
+                      <input
+                        type="color"
+                        value={settings.background}
+                        onChange={(event) => updateSettings('background', event.target.value)}
+                        aria-label="Page background color"
+                      />
+                      <span>{settings.background}</span>
                     </span>
                   </label>
                 </div>
+              </section>
               </div>
-            </section>
+            )}
+
+            {exportTab === 'png' && (
+              <div role="tabpanel" id="export-panel-png" aria-labelledby="export-tab-png">
+              <section className="control-section">
+                <p className="export-note">
+                  PNG pages are pictures of the HTML layout, not of the PDF template. Page style is {presetOptions.find((preset) => preset.value === settings.preset)?.label ?? 'Editorial'}.
+                </p>
+                <button type="button" className="export-text-link" onClick={() => setExportTab('html')}>
+                  Edit HTML style
+                </button>
+                <div className="field-row two-up">
+                  <label>
+                    <span>Paper</span>
+                    <select
+                      value={settings.paper}
+                      onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
+                    >
+                      {paperSizeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="range-field">
+                    <span><span>Margin</span><output>{settings.margin}px</output></span>
+                    <input
+                      type="range"
+                      min="36"
+                      max="104"
+                      value={settings.margin}
+                      onChange={(event) => updateSettings('margin', Number(event.target.value))}
+                    />
+                  </label>
+                </div>
+              </section>
+              {watermarkSection}
+              </div>
+            )}
           </div>
 
           <div className="export-preview-column">
             <div className="preview-label">
-              <span>PDF / PNG preview</span>
-              <span>{settings.paper.toUpperCase()} · {settings.font}</span>
+              <span>
+                {exportTab === 'pdf' ? 'PDF template' : exportTab === 'html' ? 'HTML preview' : 'PNG preview'}
+              </span>
+              <span>
+                {exportTab === 'pdf'
+                  ? `${pdfTemplate.label} · ${settings.paper.toUpperCase()}`
+                  : `${settings.paper.toUpperCase()} · ${settings.font}`}
+              </span>
             </div>
             <div className="export-preview-viewport">
-              <div
-                ref={exportPreviewRef}
-                className="export-page-scaler"
-                style={{
-                  width: dimensions.width * 0.42,
-                  height: dimensions.height * 0.42,
-                  ['--preview-scale' as string]: 0.42,
-                }}
-              >
-                <ExportPage pageStyle={pageStyle} rendered={rendered} settings={settings} />
-              </div>
+              {exportTab === 'pdf' ? (
+                <div
+                  className="pdf-look"
+                  style={{
+                    aspectRatio: `${dimensions.width} / ${dimensions.height}`,
+                    padding: `${Math.round(settings.margin * 0.38)}px`,
+                    background: pdfTemplate.background,
+                    color: pdfTemplate.body,
+                    fontFamily: pdfFontStack(pdfTemplate.font),
+                    ['--pdf-accent' as string]: pdfTemplate.accent,
+                    ['--pdf-rule' as string]: pdfTemplate.rule,
+                    ['--pdf-heading' as string]: pdfTemplate.heading,
+                  }}
+                >
+                  {pdfTemplate.chrome === 'bar' && <span className="pdf-look-bar" aria-hidden="true" />}
+                  {pdfTemplate.chrome === 'letterhead' && <span className="pdf-look-letterhead" aria-hidden="true" />}
+                  {pdfTemplate.chrome === 'folio' && (
+                    <>
+                      <span className="pdf-look-folio-top" aria-hidden="true" />
+                      <span className="pdf-look-folio-bottom" aria-hidden="true" />
+                    </>
+                  )}
+                  <Watermark settings={settings} />
+                  <p className="pdf-look-kicker" style={{ color: pdfTemplate.muted }}>PDF look · not the HTML page</p>
+                  <h3 style={{
+                    color: pdfTemplate.heading,
+                    textAlign: pdfTemplate.h1Align,
+                    fontSize: pdfTemplate.h1 + 4,
+                    letterSpacing: pdfTemplate.h1Align === 'center' ? 0 : '-0.02em',
+                  }}
+                  >
+                    {title || 'Untitled document'}
+                  </h3>
+                  <p
+                    className="pdf-look-section"
+                    style={{
+                      color: pdfTemplate.heading,
+                      letterSpacing: pdfTemplate.h2Style === 'uppercase' ? '0.08em' : undefined,
+                      textTransform: pdfTemplate.h2Style === 'uppercase' ? 'uppercase' : undefined,
+                      borderBottom: pdfTemplate.h2Style === 'rule' ? `2px solid ${pdfTemplate.accent}` : undefined,
+                    }}
+                  >
+                    {pdfTemplate.label}
+                  </p>
+                  <p style={{ textIndent: pdfTemplate.firstLineIndent, lineHeight: pdfTemplate.lineHeight }}>
+                    {pdfExcerpt}{previewPlain.length > 280 ? '…' : ''}
+                  </p>
+                  <p style={{ color: pdfTemplate.muted, lineHeight: pdfTemplate.lineHeight }}>
+                    {pdfTemplate.detail}. Paper is {settings.paper.toUpperCase()}.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  ref={exportPreviewRef}
+                  className="export-page-scaler"
+                  style={{
+                    width: dimensions.width * 0.42,
+                    height: dimensions.height * 0.42,
+                    ['--preview-scale' as string]: 0.42,
+                  }}
+                >
+                  <ExportPage
+                    pageStyle={pageStyle}
+                    rendered={rendered}
+                    settings={settings}
+                    showWatermark={exportTab === 'png'}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -979,15 +1162,21 @@ function ExportStudio({
         <footer className="export-footer">
           <div className="privacy-note"><ShieldCheck size={15} /> Exports are created locally in your browser.</div>
           <div className="export-actions">
-            <button className="export-action" onClick={exportHtml} disabled={exporting !== null}>
-              <CodeXml size={17} /><span><strong>Download HTML</strong><small>No watermark</small></span>
-            </button>
-            <button className="export-action" onClick={exportPng} disabled={exporting !== null}>
-              <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Rendering pages…' : 'PNG pages'}</strong><small>One image per page</small></span>
-            </button>
-            <button className="export-action primary" onClick={exportPdf} disabled={exporting !== null}>
-              <FileDown size={17} /><span><strong>{exporting === 'pdf' ? 'Creating PDF…' : 'Save as PDF'}</strong><small>Direct download</small></span>
-            </button>
+            {exportTab === 'html' && (
+              <button type="button" className="export-action primary" onClick={exportHtml} disabled={exporting !== null}>
+                <CodeXml size={17} /><span><strong>Download HTML</strong><small>No watermark</small></span>
+              </button>
+            )}
+            {exportTab === 'png' && (
+              <button type="button" className="export-action primary" onClick={exportPng} disabled={exporting !== null}>
+                <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Rendering pages…' : 'PNG pages'}</strong><small>Pictures of the HTML layout</small></span>
+              </button>
+            )}
+            {exportTab === 'pdf' && (
+              <button type="button" className="export-action primary" onClick={exportPdf} disabled={exporting !== null}>
+                <FileDown size={17} /><span><strong>{exporting === 'pdf' ? 'Creating PDF…' : 'Save as PDF'}</strong><small>{pdfTemplate.label} template</small></span>
+              </button>
+            )}
           </div>
         </footer>
       </section>

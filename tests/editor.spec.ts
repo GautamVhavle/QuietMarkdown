@@ -137,6 +137,7 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   )
   await page.getByRole('button', { name: 'Open export studio' }).click()
 
+  await page.getByRole('tab', { name: 'HTML' }).click()
   const htmlDownloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: /Download HTML/ }).click()
   const htmlDownload = await htmlDownloadPromise
@@ -148,6 +149,7 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   expect(html).not.toContain('watermark')
   expect(html).not.toContain('quietmark.vercel.app')
 
+  await page.getByRole('tab', { name: 'PDF' }).click()
   const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
   await page.getByRole('button', { name: /Save as PDF/ }).click()
   const pdfDownload = await pdfDownloadPromise
@@ -159,6 +161,9 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/)
   expect(pdfBytes.subarray(0, 4).toString()).toBe('%PDF')
   expect(pdf.getPageCount()).toBeGreaterThan(0)
+  const { width, height } = pdf.getPage(0).getSize()
+  expect(width).toBeCloseTo(595.28, 0)
+  expect(height).toBeCloseTo(841.89, 0)
 })
 
 test('shows paged export preview at the selected paper size', async ({ page }, testInfo) => {
@@ -196,7 +201,13 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await page.getByRole('button', { name: 'Export' }).first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Finish it beautifully.' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'PDF' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('list', { name: 'PDF templates' }).getByRole('button')).toHaveCount(8)
+  await expect(page.getByText('PDF look · not the HTML page')).toBeVisible()
+  await page.getByRole('list', { name: 'PDF templates' }).getByRole('button', { name: 'Report' }).click()
+  await expect(page.getByRole('button', { name: /Save as PDF/ })).toContainText('Report')
 
+  await page.getByRole('tab', { name: 'HTML' }).click()
   await page.getByRole('button', { name: 'Minimal' }).click()
   await expect(page.getByLabel('Typeface')).toHaveValue('sans')
   await expect(page.locator('.export-page-live').first()).toHaveClass(/export-preset-minimal/)
@@ -206,6 +217,7 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.locator('.preset-card')).toHaveCount(8)
   await expect(page.getByLabel('Page background color')).toHaveValue('#ffffff')
 
+  await page.getByRole('tab', { name: 'PDF' }).click()
   const watermark = page.getByPlaceholder('DRAFT, CONFIDENTIAL…')
   await expect(watermark).toHaveValue('quietmark.vercel.app')
   await watermark.fill('CONFIDENTIAL')

@@ -36,6 +36,21 @@ export const paperSizeOptions: Array<{ value: PaperSize; label: string }> = [
   { value: 'tabloid', label: 'Tabloid' },
 ]
 
+/** ISO / US paper sizes in PDF points (1/72 inch). */
+export const pageSizePoints: Record<PaperSize, { width: number; height: number }> = {
+  a5: { width: 419.53, height: 595.28 },
+  a4: { width: 595.28, height: 841.89 },
+  a3: { width: 841.89, height: 1190.55 },
+  letter: { width: 612, height: 792 },
+  legal: { width: 612, height: 1008 },
+  tabloid: { width: 792, height: 1224 },
+}
+
+/** CSS-pixel margins → PDF points (96dpi → 72dpi). */
+export function marginPoints(marginPx: number): number {
+  return Math.round(marginPx * 0.75)
+}
+
 export function getExportStyle(settings: ExportSettings) {
   const preset = {
     editorial: {

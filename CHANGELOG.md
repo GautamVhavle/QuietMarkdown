@@ -6,11 +6,15 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ### Added
 
-- **Paged export preview** — toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as PDF/PNG export
+- **Paged export preview** — toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as PNG export
+- **Eight ready PDF templates** — Literary, Report, Thesis, Memo, Notes, Letter, Spec, and Folio. Each has its own type, paper, margins, and page chrome
+- **Tabbed export studio** — PDF, HTML, and PNG each have their own path, because a typeset PDF cannot match the HTML page
 
 ### Changed
 
-- PDF/PNG pagination fills real pages until the browser reports overflow, then splits at the last complete line, list item, or table row — no more clipping a continuous HTML sheet through glyphs
+- **PDF export is a real document**, not a screenshot of HTML. Text is selectable, pages are true A4/Letter/etc. sizes in PDF points, and line breaks happen in the typesetter instead of by clipping a canvas
+- HTML page styles stay on the HTML tab (and PNG pictures of that layout). PDF templates no longer share those controls
+- PNG pages still capture the HTML layout; the Page breaks preview remains an HTML preview of that flow
 
 ### Removed
 

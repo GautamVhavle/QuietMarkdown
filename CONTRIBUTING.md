@@ -24,6 +24,8 @@ src/
 │   ├── markdown.ts          # Sanitized Markdown rendering
 │   ├── export.ts            # Export presets, standalone HTML, downloads
 │   ├── pagination.ts        # Element-aware page-break computation
+│   ├── pdf-document.ts      # Typeset Markdown → selectable PDF
+│   ├── pdf-templates.ts     # Ready PDF templates
 │   └── storage.ts           # Quota-safe localStorage wrapper (always use it)
 ├── styles.css               # Design tokens + all styling
 └── types.ts                 # Shared editor/export types

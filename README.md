@@ -41,7 +41,7 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 - **A library, not a lone note.** Keep many documents in one calm workspace.
 - **Fast where it matters.** Live split preview and instant find & replace.
 - **Files you own.** Open, drag & drop, paste images into, and download normal `.md` files. Markdown is the canonical source of truth.
-- **Export with confidence.** Styled standalone HTML, multipage PDF, and true 2× PNG pages — what the page preview shows is what you get.
+- **Export with confidence.** Typeset PDF from ready templates, styled standalone HTML, and true 2× PNG pages of the HTML layout.
 
 ## Features
 
@@ -64,13 +64,19 @@ Markdown writing tools tend to choose between two extremes: bare browser utiliti
 
 ### A watermark-first export studio
 
+The studio is tabbed. PDF is typeset as its own document; HTML and PNG share a webpage look. They are not the same file in three costumes.
+
 | Export | What you get |
 | --- | --- |
-| **PDF** | A direct multipage PDF download that matches the page preview, with line-aware pagination that keeps headings, tables, images, and code blocks intact across breaks |
-| **HTML** | A portable standalone document with selected styling and no watermark |
-| **PNG pages** | True 2× page images. Multi-page documents download as one ZIP containing numbered PNG files |
+| **PDF** | A real, selectable document from a ready template. True paper size in PDF points, line-aware page breaks, optional watermark as PDF text |
+| **HTML** | A portable standalone webpage with selected styling and no watermark |
+| **PNG pages** | True 2× pictures of the HTML layout. Multi-page documents download as one ZIP of numbered PNG files |
 
-Choose from eight structurally distinct document systems:
+PDF templates (pick one and export):
+
+**Literary** · essays and long reads — **Report** · clean business papers — **Thesis** · papers and citations — **Memo** · short internal notes — **Notes** · typewritten drafts — **Letter** · correspondence on US Letter — **Spec** · technical write-ups — **Folio** · magazine features
+
+HTML and PNG page styles (separate from PDF):
 
 **Editorial** · warm expressive essays — **Minimal** · quiet working documents — **Academic** · numbered sections, booktabs tables — **Manuscript** · typewriter drafts — **Swiss** · graphic modernist hierarchy — **Letterpress** · classic crafted documents — **Executive** · sharp professional reports — **Notebook** · approachable personal notes
 
@@ -143,9 +149,11 @@ src/
 │   └── ErrorBoundary.tsx    # Crash guard keeping drafts recoverable
 ├── lib/
 │   ├── markdown.ts          # Sanitized Markdown rendering
-    ├── export.ts            # Portable HTML, styling presets, downloads
-    ├── pagination.ts        # Element-aware page-break computation
-    └── storage.ts           # Quota-safe localStorage wrapper
+│   ├── export.ts            # Portable HTML, styling presets, downloads
+│   ├── pagination.ts        # Element-aware page-break computation
+│   ├── pdf-document.ts      # Typeset Markdown → selectable PDF
+│   ├── pdf-templates.ts     # Ready PDF templates (Literary, Report, …)
+│   └── storage.ts           # Quota-safe localStorage wrapper
 ├── styles.css               # Design tokens, responsive UI, export presets
 └── types.ts                 # Shared editor/export types
 
@@ -164,12 +172,13 @@ tests/                       # Playwright desktop/tablet/mobile workflows
 - **markdown-it** and **markdown-it-task-lists** for focused GFM rendering
 - **DOMPurify** to sanitize rendered Markdown and every export
 - **Highlight.js** with a deliberately small language set
-- **html-to-image**, **pdf-lib**, and **JSZip** for high-fidelity page-based exports
+- **pdf-lib** typesets a real, selectable PDF from the Markdown (not a screenshot of HTML)
+- **html-to-image** and **JSZip** for PNG page images
 - **Playwright** for responsive end-to-end coverage
 
-### How exports stay pixel-honest
+### How PDF export works
 
-The export pipeline renders each page exactly as the preview does: Markdown → sanitized HTML → element-aware pagination → per-page capture.
+PDF is a real document: Markdown is parsed into headings, paragraphs, lists, tables, code, and images, then laid out from a chosen template in PDF points on A4 (or the paper size you chose). Text stays selectable and pages break between complete lines. That file will not match the HTML page — the studio keeps PDF templates and HTML styles on separate tabs for that reason. The live **Page breaks** preview still uses HTML so you can see how the styled webpage flows before PNG or HTML export.
 
 ## Privacy
 
