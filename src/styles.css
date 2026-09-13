@@ -65,13 +65,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(18px);
 }
-.brand, .header-actions, .title-wrap, .format-toolbar, .document-stats, .view-switcher,
+.header-actions, .title-wrap, .format-toolbar, .document-stats, .view-switcher,
 .quiet-button, .primary-button, .icon-button, .pane-label,
-.privacy-note, .export-actions, .export-action, .section-heading > div, .eyebrow {
+.privacy-note, .export-actions, .export-action, .eyebrow {
   display: flex;
   align-items: center;
 }
-.brand { min-width: 0; gap: 9px; }
+.brand { min-width: 0; gap: 9px; border: 0; background: transparent; color: inherit; padding: 4px 6px; margin-left: -6px; border-radius: 8px; cursor: pointer; text-align: left; }
+.brand:hover { background: var(--surface-hover); }
+.brand:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent); outline-offset: 2px; }
 .brand-mark {
   display: grid;
   width: 28px;
