@@ -1,12 +1,42 @@
-import type { ExportSettings, PaperSize } from '../types'
+import type { ExportSettings, FineTuneSettings, PaperSize } from '../types'
+import { MARGIN_PRESET_PX } from '../types'
+import { getExportFont } from './fonts'
 
-const fonts = {
-  serif: "'Newsreader', 'Iowan Old Style', Georgia, serif",
-  classic: "Baskerville, 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
-  sans: "'DM Sans', Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  humanist: "Optima, Candara, 'Segoe UI', ui-sans-serif, sans-serif",
-  mono: "'DM Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-  typewriter: "'Courier Prime', Courier, 'Nimbus Mono PS', monospace",
+export const MARGIN_PRESETS: Array<{ value: FineTuneSettings['marginPreset']; label: string; detail: string }> = [
+  { value: 'narrow', label: 'Narrow', detail: '48px' },
+  { value: 'normal', label: 'Normal', detail: '72px' },
+  { value: 'wide', label: 'Wide', detail: '96px' },
+]
+
+export const ORIENTATIONS: Array<{ value: FineTuneSettings['orientation']; label: string }> = [
+  { value: 'portrait', label: 'Portrait' },
+  { value: 'landscape', label: 'Landscape' },
+]
+
+/** Resolve the effective page box after orientation (landscape swaps W/H). */
+export function orientedDimensions(paper: PaperSize, orientation: FineTuneSettings['orientation']) {
+  const base = pageDimensions[paper]
+  if (orientation === 'landscape') return { width: base.height, height: base.width, css: `${base.css} landscape` }
+  return { width: base.width, height: base.height, css: base.css }
+}
+
+/** Effective margin in px from the margin preset. */
+export function tuneMarginPx(tune: FineTuneSettings): number {
+  return MARGIN_PRESET_PX[tune.marginPreset]
+}
+
+/** Effective paper-size points after orientation. */
+export function tunePageSizePoints(paper: PaperSize, orientation: FineTuneSettings['orientation']) {
+  const base = pageSizePoints[paper]
+  if (orientation === 'landscape') return { width: base.height, height: base.width }
+  return { width: base.width, height: base.height }
+}
+
+export function tuneHeadingColor(tune: FineTuneSettings, level: 1 | 2 | 3): string {
+  if (tune.headingColorMode === 'each') {
+    return level === 1 ? tune.h1Color : level === 2 ? tune.h2Color : tune.h3Color
+  }
+  return tune.headingColor
 }
 
 const escapeHtml = (value: string) =>
@@ -128,7 +158,7 @@ export function getExportStyle(settings: ExportSettings) {
     ? { body: '#f1f0eb', muted: '#bbb9b1', heading: '#ffffff', rule: '#575752' }
     : {}
 
-  return { ...preset, ...contrast, background: settings.background, fontFamily: fonts[settings.font] }
+  return { ...preset, ...contrast, background: settings.background, fontFamily: getExportFont(settings.fineTune.bodyFont).stack }
 }
 
 function getPresetCss(preset: ExportSettings['preset']) {
@@ -224,13 +254,20 @@ function getPresetCss(preset: ExportSettings['preset']) {
 
 export function getExportCss(settings: ExportSettings) {
   const style = getExportStyle(settings)
-  const paper = pageDimensions[settings.paper]
+  const tune = settings.fineTune
+  const paper = orientedDimensions(tune.paper, tune.orientation)
+  const margin = tuneMarginPx(tune)
+  const bodyFont = getExportFont(tune.bodyFont).stack
+  const headingFont = getExportFont(tune.headingFont).stack
+  const h1 = tuneHeadingColor(tune, 1)
+  const h2 = tuneHeadingColor(tune, 2)
+  const h3 = tuneHeadingColor(tune, 3)
 
   return `
-    :root { color-scheme: light; --body: ${style.body}; --muted: ${style.muted}; --heading: ${style.heading}; --rule: ${style.rule}; --accent: ${settings.accent}; }
+    :root { color-scheme: light; --body: ${tune.bodyColor}; --muted: ${style.muted}; --heading: ${tune.headingColor}; --rule: ${style.rule}; --accent: ${tune.linkColor}; }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: #ecebe7; color: ${style.body}; }
-    body { padding: 28px; font-family: ${style.fontFamily}; }
+    html, body { margin: 0; background: #ecebe7; color: ${tune.bodyColor}; }
+    body { padding: 28px; font-family: ${bodyFont}; }
     .export-page {
       isolation: isolate;
       position: relative;
@@ -238,21 +275,22 @@ export function getExportCss(settings: ExportSettings) {
       min-height: ${paper.height}px;
       margin: 0 auto;
       overflow: hidden;
-      padding: ${settings.margin}px;
+      padding: ${margin}px;
       background: ${style.background};
       box-shadow: 0 16px 50px rgba(25, 24, 21, .14);
     }
     .document { position: relative; z-index: 2; }
     .document > *:first-child { margin-top: 0; }
     .document > *:last-child { margin-bottom: 0; }
-    h1, h2, h3, h4, h5, h6 { color: ${style.heading}; line-height: 1.18; font-weight: ${style.headingWeight}; letter-spacing: -.025em; }
-    h1 { margin: 0 0 1.05em; font-size: 2.75rem; letter-spacing: -.045em; }
-    h2 { margin: 1.9em 0 .65em; padding-bottom: .3em; border-bottom: 1px solid ${style.rule}; font-size: 1.7rem; }
-    h3 { margin: 1.6em 0 .5em; font-size: 1.26rem; }
-    p, li { font-size: 1rem; line-height: ${style.lineHeight}; }
+    h1, h2, h3, h4, h5, h6 { font-family: ${headingFont}; line-height: 1.18; font-weight: ${style.headingWeight}; letter-spacing: -.025em; }
+    h1 { margin: 0 0 1.05em; color: ${h1}; font-size: 2.75rem; letter-spacing: -.045em; }
+    h2 { margin: 1.9em 0 .65em; padding-bottom: .3em; border-bottom: 1px solid ${style.rule}; color: ${h2}; font-size: 1.7rem; }
+    h3 { margin: 1.6em 0 .5em; color: ${h3}; font-size: 1.26rem; }
+    h4, h5, h6 { color: ${tune.headingColor}; }
+    p, li { color: ${tune.bodyColor}; font-size: 1rem; line-height: ${style.lineHeight}; }
     p { margin: 0 0 1.2em; }
-    a { color: ${settings.accent}; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-    strong { color: ${style.heading}; font-weight: 700; }
+    a { color: ${tune.linkColor}; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    strong { color: ${tune.headingColor}; font-weight: 700; }
     blockquote { margin: 1.5em 0; padding: .25em 0 .25em 1.25em; border-left: 3px solid ${settings.accent}; color: ${style.muted}; font-style: italic; }
     blockquote p { margin: 0; }
     ul, ol { padding-left: 1.4em; }

@@ -1,14 +1,9 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { pageDimensions } from '../lib/export'
+import { orientedDimensions, tuneHeadingColor, tuneMarginPx } from '../lib/export'
+import { ensureExportFont, getExportFont } from '../lib/fonts'
 import { paginateHtml } from '../lib/pagination'
 import type { ExportSettings } from '../types'
 import type { PdfTemplate } from '../lib/pdf-templates'
-
-function pdfFontStack(font: PdfTemplate['font']): string {
-  if (font === 'mono' || font === 'typewriter') return '"Courier New", Courier, monospace'
-  if (font === 'sans' || font === 'humanist') return 'Helvetica, Arial, sans-serif'
-  return 'Times, "Times New Roman", Georgia, serif'
-}
 
 function PdfWatermark({ settings }: { settings: ExportSettings }) {
   const watermark = settings.watermark
@@ -52,20 +47,33 @@ export function PdfPreview({ rendered, settings, template }: PdfPreviewProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState<string[]>([])
   const [scale, setScale] = useState(0.42)
-  const dimensions = pageDimensions[settings.paper]
+  const tune = settings.fineTune
+  const dimensions = orientedDimensions(tune.paper, tune.orientation)
+  const margin = tuneMarginPx(tune)
+  const bodyFont = getExportFont(tune.bodyFont).stack
+  const headingFont = getExportFont(tune.headingFont).stack
+
+  useEffect(() => {
+    ensureExportFont(tune.bodyFont)
+    ensureExportFont(tune.headingFont)
+  }, [tune.bodyFont, tune.headingFont])
 
   const pageStyle = {
     '--pdf-bg': template.background,
-    '--pdf-body': template.body,
-    '--pdf-heading': template.heading,
+    '--pdf-body': tune.bodyColor,
+    '--pdf-heading': tune.headingColor,
+    '--pdf-h1': tuneHeadingColor(tune, 1),
+    '--pdf-h2': tuneHeadingColor(tune, 2),
+    '--pdf-h3': tuneHeadingColor(tune, 3),
     '--pdf-muted': template.muted,
     '--pdf-rule': template.rule,
-    '--pdf-accent': template.accent,
-    '--pdf-font': pdfFontStack(template.font),
+    '--pdf-accent': tune.linkColor,
+    '--pdf-font': bodyFont,
+    '--pdf-heading-font': headingFont,
     '--pdf-body-size': pt(template.bodySize),
-    '--pdf-h1': pt(template.h1),
-    '--pdf-h2': pt(template.h2),
-    '--pdf-h3': pt(template.h3),
+    '--pdf-h1-size': pt(template.h1),
+    '--pdf-h2-size': pt(template.h2),
+    '--pdf-h3-size': pt(template.h3),
     '--pdf-line-height': template.lineHeight,
     '--pdf-para-gap': `${template.paragraphGap}px`,
     '--pdf-indent': `${template.firstLineIndent}px`,
@@ -77,10 +85,10 @@ export function PdfPreview({ rendered, settings, template }: PdfPreviewProps) {
     minHeight: `${dimensions.height}px`,
     maxHeight: `${dimensions.height}px`,
     overflow: 'hidden',
-    padding: `${settings.margin}px`,
+    padding: `${margin}px`,
     background: template.background,
-    color: template.body,
-    fontFamily: pdfFontStack(template.font),
+    color: tune.bodyColor,
+    fontFamily: bodyFont,
   } as CSSProperties
 
   useLayoutEffect(() => {
@@ -168,14 +176,14 @@ export function PdfPreview({ rendered, settings, template }: PdfPreviewProps) {
               className="export-document pdf-document"
               dangerouslySetInnerHTML={{ __html: pageHtml }}
             />
-            {template.pageNumber !== 'none' && (
+            {tune.pageNumbers && template.pageNumber !== 'none' && (
               <span className={`pdf-page-number pdf-page-number-${template.pageNumber}`} aria-hidden="true">
                 {index + 1}
               </span>
             )}
           </div>
           <figcaption className="paged-folio">
-            Page {index + 1} of {sheets.length} · {settings.paper.toUpperCase()}
+            Page {index + 1} of {sheets.length} · {tune.paper.toUpperCase()}{tune.orientation === 'landscape' ? ' · Landscape' : ''}
           </figcaption>
         </figure>
       ))}

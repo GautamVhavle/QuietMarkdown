@@ -478,13 +478,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pdf-chrome-folio-top, .pdf-chrome-folio-bottom { height: 1px; margin: 0 28px; background: var(--pdf-rule); }
 .pdf-chrome-folio-top { top: 12px; }
 .pdf-chrome-folio-bottom { bottom: 12px; }
+.template-look { color: var(--accent-ink); font-size: 10px; font-weight: 600; }
 .pdf-document { position: relative; z-index: 2; }
 .pdf-document > *:first-child { margin-top: 0; }
 .pdf-document > *:last-child { margin-bottom: 0; }
-.pdf-document h1, .pdf-document h2, .pdf-document h3, .pdf-document h4, .pdf-document h5, .pdf-document h6 { color: var(--pdf-heading); font-weight: 700; line-height: 1.18; letter-spacing: -.02em; }
-.pdf-document h1 { margin: 0 0 18px; font-size: var(--pdf-h1); text-align: var(--pdf-h1-align); }
-.pdf-document h2 { margin: 26px 0 12px; font-size: var(--pdf-h2); letter-spacing: var(--pdf-h2-spacing); text-transform: var(--pdf-h2-transform); }
-.pdf-document h3 { margin: 22px 0 10px; font-size: var(--pdf-h3); }
+.pdf-document h1, .pdf-document h2, .pdf-document h3, .pdf-document h4, .pdf-document h5, .pdf-document h6 { font-family: var(--pdf-heading-font, var(--pdf-font)); font-weight: 700; line-height: 1.18; letter-spacing: -.02em; }
+.pdf-document h1 { margin: 0 0 18px; color: var(--pdf-h1, var(--pdf-heading)); font-size: var(--pdf-h1-size, var(--pdf-h1)); text-align: var(--pdf-h1-align); }
+.pdf-document h2 { margin: 26px 0 12px; color: var(--pdf-h2, var(--pdf-heading)); font-size: var(--pdf-h2-size, var(--pdf-h2)); letter-spacing: var(--pdf-h2-spacing); text-transform: var(--pdf-h2-transform); }
+.pdf-document h3 { margin: 22px 0 10px; color: var(--pdf-h3, var(--pdf-heading)); font-size: var(--pdf-h3-size, var(--pdf-h3)); }
+.pdf-document h4, .pdf-document h5, .pdf-document h6 { color: var(--pdf-heading); }
 .pdf-document p, .pdf-document li { color: var(--pdf-body); font-size: var(--pdf-body-size); line-height: var(--pdf-line-height); }
 .pdf-document p { margin: 0 0 var(--pdf-para-gap); text-indent: var(--pdf-indent); }
 .pdf-document p:first-of-type, .pdf-document h1 + p, .pdf-document h2 + p, .pdf-document h3 + p, .pdf-document blockquote p, .pdf-document li p { text-indent: 0; }
@@ -509,6 +511,37 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .pdf-page-number-center { left: 50%; transform: translateX(-50%); }
 .pdf-page-number-right { right: 40px; }
 .pdf-empty { margin: 0; color: var(--pdf-muted); font-size: 14px; }
+.pdf-raster-frame { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pdf-raster-frame img { width: 100%; height: auto; border-radius: 2px; box-shadow: 0 14px 45px rgba(22,21,19,.16); background: #fff; }
+
+/* Fine-tune panel */
+.tune-group { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.tune-group:first-of-type { margin-top: 4px; }
+.tune-group-title { display: block; margin-bottom: 10px; color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: -.01em; }
+.tune-colors { margin-top: 12px; }
+.font-picker { position: relative; }
+.font-picker-button { display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); cursor: pointer; text-align: left; }
+.font-picker-button:hover { border-color: var(--ink-faint); }
+.font-picker-sample { display: grid; width: 34px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 7px; background: var(--surface-soft); color: var(--ink); font-size: 16px; font-weight: 600; }
+.font-picker-name { flex: 1; min-width: 0; overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.font-picker-caret { color: var(--ink-faint); font-size: 12px; }
+.font-picker-panel { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; left: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); box-shadow: 0 18px 50px rgba(20,19,17,.18); overflow: hidden; }
+.font-picker-panel input[type='search'] { width: 100%; border: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; background: transparent; color: var(--ink); font-size: 12px; outline: none; }
+.font-picker-list { max-height: 240px; overflow-y: auto; padding: 6px; }
+.font-picker-option { display: flex; width: 100%; align-items: center; gap: 10px; padding: 7px 8px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; text-align: left; }
+.font-picker-option:hover { background: var(--surface-soft); }
+.font-picker-option.selected { background: var(--accent-soft); }
+.font-picker-empty { margin: 0; padding: 12px; color: var(--ink-faint); font-size: 11px; }
+.segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+.segmented.three { grid-template-columns: repeat(3, 1fr); }
+.segmented button { padding: 8px 6px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-solid); color: var(--ink-faint); font-size: 11px; font-weight: 650; cursor: pointer; }
+.segmented button:hover { border-color: var(--ink-faint); }
+.segmented button.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent); }
+.paper-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 4px; }
+.paper-grid button { padding: 8px 4px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-solid); color: var(--ink-faint); font-size: 11px; font-weight: 650; cursor: pointer; }
+.paper-grid button:hover { border-color: var(--ink-faint); }
+.paper-grid button.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent); }
+.tune-switch-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; color: var(--ink-soft); font-size: 12px; font-weight: 650; }
 .export-body { display: grid; min-height: 0; flex: 1; grid-template-columns: minmax(460px, .9fr) minmax(440px, 1.1fr); }
 .export-controls { min-height: 0; overflow-y: auto; border-right: 1px solid var(--line); background: var(--surface); }
 .control-section { padding: 20px 22px 22px; border-bottom: 1px solid var(--line); }

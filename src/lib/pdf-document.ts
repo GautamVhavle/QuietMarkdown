@@ -9,7 +9,9 @@ import {
   type RGB,
 } from 'pdf-lib'
 import type { ExportSettings } from '../types'
-import { marginPoints, pageSizePoints } from './export'
+import { MARGIN_PRESET_PX } from '../types'
+import { tuneHeadingColor, tunePageSizePoints } from './export'
+import { getExportFont } from './fonts'
 import { getPdfTemplate } from './pdf-templates'
 
 interface Run {
@@ -232,16 +234,14 @@ function inlineRuns(node: Node): Run[] {
   return runs
 }
 
-async function loadFonts(pdf: PDFDocument, family: ExportSettings['font']): Promise<FontSet> {
-  const serif = family === 'serif' || family === 'classic'
-  const mono = family === 'mono' || family === 'typewriter'
-  if (mono) {
+async function loadFonts(pdf: PDFDocument, family: 'serif' | 'sans' | 'mono'): Promise<FontSet> {
+  if (family === 'mono') {
     const body = await pdf.embedFont(StandardFonts.Courier)
     const bold = await pdf.embedFont(StandardFonts.CourierBold)
     const italic = await pdf.embedFont(StandardFonts.CourierOblique)
     return { body, bold, italic, boldItalic: bold, mono: body, monoBold: bold }
   }
-  if (serif) {
+  if (family === 'serif') {
     return {
       body: await pdf.embedFont(StandardFonts.TimesRoman),
       bold: await pdf.embedFont(StandardFonts.TimesRomanBold),
@@ -325,18 +325,22 @@ export async function createMarkdownPdf(
   pdf.setProducer('QuietMarkdown')
 
   const recipe = getPdfTemplate(settings.pdfTemplate)
-  const size = pageSizePoints[settings.paper]
-  const margin = marginPoints(settings.margin)
+  const tune = settings.fineTune
+  const size = tunePageSizePoints(tune.paper, tune.orientation)
+  const margin = Math.round(MARGIN_PRESET_PX[tune.marginPreset] * 0.75)
   const contentWidth = size.width - 2 * margin
   const colors = {
-    body: hexRgb(recipe.body),
-    heading: hexRgb(recipe.heading),
+    body: hexRgb(tune.bodyColor),
+    heading: hexRgb(tune.headingColor),
+    h1: hexRgb(tuneHeadingColor(tune, 1)),
+    h2: hexRgb(tuneHeadingColor(tune, 2)),
+    h3: hexRgb(tuneHeadingColor(tune, 3)),
     muted: hexRgb(recipe.muted),
     rule: hexRgb(recipe.rule),
-    accent: hexRgb(recipe.accent),
+    accent: hexRgb(tune.linkColor),
     background: hexRgb(recipe.background),
   }
-  const fonts = await loadFonts(pdf, recipe.font)
+  const fonts = await loadFonts(pdf, getExportFont(tune.bodyFont).pdf)
   const bodySize = recipe.bodySize
   const lineHeight = recipe.lineHeight
   const watermarkFont = fonts.bold
@@ -623,6 +627,7 @@ export async function createMarkdownPdf(
     if (tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'H4' || tag === 'H5' || tag === 'H6') {
       const sizes = { H1: recipe.h1, H2: recipe.h2, H3: recipe.h3, H4: recipe.bodySize, H5: recipe.bodySize, H6: recipe.bodySize }
       const fontSize = sizes[tag as keyof typeof sizes]
+      const levelColor = tag === 'H1' ? colors.h1 : tag === 'H2' ? colors.h2 : tag === 'H3' ? colors.h3 : colors.heading
       cursor += tag === 'H1' ? 4 : 10
       let runs = inlineRuns(element).map((run) => ({ ...run, bold: true }))
       if (tag === 'H2' && recipe.h2Style === 'uppercase') {
@@ -630,7 +635,7 @@ export async function createMarkdownPdf(
       }
       drawParagraph(runs, {
         size: fontSize,
-        color: colors.heading,
+        color: levelColor,
         align: tag === 'H1' ? recipe.h1Align : 'left',
       })
       if (tag === 'H2' && recipe.h2Style === 'rule') {
@@ -738,7 +743,7 @@ export async function createMarkdownPdf(
   const pages = pdf.getPages()
   pages.forEach((pdfPage, index) => {
     drawWatermark(pdfPage, settings, watermarkFont, size.width, size.height)
-    if (recipe.pageNumber === 'none') return
+    if (!tune.pageNumbers || recipe.pageNumber === 'none') return
     const label = String(index + 1)
     const numberSize = 9
     const labelWidth = fonts.body.widthOfTextAtSize(label, numberSize)

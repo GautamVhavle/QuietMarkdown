@@ -1,10 +1,13 @@
-import type { ExportFont, PaperSize, PdfTemplateId } from '../types'
+import type { PaperSize, PdfTemplateId } from '../types'
+import type { PdfFontFamily } from './fonts'
 
 export interface PdfTemplate {
   id: PdfTemplateId
   label: string
   detail: string
-  font: ExportFont
+  /** One-line differentiator shown under the template name. */
+  look: string
+  font: PdfFontFamily
   paper: PaperSize
   margin: number
   accent: string
@@ -28,9 +31,10 @@ export interface PdfTemplate {
 
 export const PDF_TEMPLATES: PdfTemplate[] = [
   {
-    id: 'literary',
-    label: 'Literary',
-    detail: 'Essays and long reads',
+    id: 'novel',
+    label: 'Novel',
+    detail: 'Book-style long reads',
+    look: 'Warm paper · indented paragraphs · no top bar',
     font: 'serif',
     paper: 'a4',
     margin: 76,
@@ -53,9 +57,10 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
     pageNumber: 'center',
   },
   {
-    id: 'report',
-    label: 'Report',
-    detail: 'Clean business papers',
+    id: 'brief',
+    label: 'Brief',
+    detail: 'One-page business summary',
+    look: 'Blue top bar · uppercase headings · right page number',
     font: 'sans',
     paper: 'a4',
     margin: 56,
@@ -80,8 +85,9 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
   {
     id: 'thesis',
     label: 'Thesis',
-    detail: 'Papers and citations',
-    font: 'classic',
+    detail: 'Centered title, formal body',
+    look: 'Centered H1 · deep indent · centered folio',
+    font: 'serif',
     paper: 'a4',
     margin: 72,
     accent: '#243b5a',
@@ -105,7 +111,8 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
   {
     id: 'memo',
     label: 'Memo',
-    detail: 'Short internal notes',
+    detail: 'Short internal note',
+    look: 'Orange bar · compact type · no page numbers',
     font: 'sans',
     paper: 'a4',
     margin: 48,
@@ -128,10 +135,11 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
     pageNumber: 'none',
   },
   {
-    id: 'notes',
-    label: 'Notes',
+    id: 'field-notes',
+    label: 'Field Notes',
     detail: 'Typewritten drafts',
-    font: 'typewriter',
+    look: 'Cream paper · monospace body · no chrome',
+    font: 'mono',
     paper: 'a4',
     margin: 62,
     accent: '#6b5344',
@@ -155,8 +163,9 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
   {
     id: 'letter',
     label: 'Letter',
-    detail: 'Correspondence',
-    font: 'classic',
+    detail: 'Correspondence on US Letter',
+    look: 'Letterhead rules · generous margins · US Letter',
+    font: 'serif',
     paper: 'letter',
     margin: 80,
     accent: '#5c4a3a',
@@ -178,9 +187,10 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
     pageNumber: 'none',
   },
   {
-    id: 'spec',
-    label: 'Spec',
-    detail: 'Technical write-ups',
+    id: 'technical',
+    label: 'Technical',
+    detail: 'Specs with ruled headings',
+    look: 'Grey-blue paper · ruled H2 · right folio',
     font: 'sans',
     paper: 'a4',
     margin: 54,
@@ -203,9 +213,10 @@ export const PDF_TEMPLATES: PdfTemplate[] = [
     pageNumber: 'right',
   },
   {
-    id: 'folio',
-    label: 'Folio',
-    detail: 'Magazine features',
+    id: 'magazine',
+    label: 'Magazine',
+    detail: 'Large display feature type',
+    look: 'Folio rules top+bottom · biggest H1 · ruled H2',
     font: 'serif',
     paper: 'a4',
     margin: 74,

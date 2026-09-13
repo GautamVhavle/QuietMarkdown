@@ -46,7 +46,6 @@ import {
   type ClipboardEvent as ReactClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
-  type RefObject,
   useEffect,
   useMemo,
   useReducer,
@@ -57,15 +56,19 @@ import {
   createExportHtml,
   downloadBlob,
   getExportStyle,
-  pageDimensions,
+  orientedDimensions,
   paperSizeOptions,
   safeFilename,
+  tuneMarginPx,
 } from './lib/export'
-import { paginateHtml } from './lib/pagination'
 import { createMarkdownPdf } from './lib/pdf-document'
 import { PDF_TEMPLATES, getPdfTemplate } from './lib/pdf-templates'
+import { ensureExportFont } from './lib/fonts'
 import { PagedPreview } from './components/PagedPreview'
 import { PdfPreview } from './components/PdfPreview'
+import { FineTunePanel } from './components/FineTunePanel'
+import { PdfPngPages } from './components/PdfPngPages'
+import { renderPdfToPngs } from './lib/pdf-raster'
 import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
 import { countDocument, renderMarkdown } from './lib/markdown'
@@ -73,6 +76,7 @@ import {
   defaultExportSettings,
   normalizeExportSettings,
   type ExportSettings,
+  type FineTuneSettings,
   type PdfTemplateId,
   type Theme,
   type ViewMode,
@@ -383,8 +387,6 @@ interface ExportPageProps {
   pageStyle: CSSProperties
   rendered: string
   settings: ExportSettings
-  capture?: boolean
-  captureRef?: RefObject<HTMLDivElement | null>
   showWatermark?: boolean
 }
 
@@ -392,14 +394,11 @@ function ExportPage({
   pageStyle,
   rendered,
   settings,
-  capture = false,
-  captureRef,
   showWatermark = true,
 }: ExportPageProps) {
   return (
     <div
-      ref={capture ? captureRef : undefined}
-      className={`export-page-live export-preset-${settings.preset}${capture ? ' export-page-capture' : ''}`}
+      className={`export-page-live export-preset-${settings.preset}`}
       style={pageStyle}
     >
       {showWatermark && <Watermark settings={settings} />}
@@ -427,7 +426,6 @@ function ExportStudio({
   onClose,
   onToast,
 }: ExportStudioProps) {
-  const captureRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
   const [exportTab, setExportTab] = useState<'pdf' | 'html' | 'png'>('pdf')
   const pdfTemplate = getPdfTemplate(settings.pdfTemplate)
@@ -436,23 +434,30 @@ function ExportStudio({
     setExportTab('pdf')
     onClose()
   }
-  const dimensions = pageDimensions[settings.paper]
+  const tune = settings.fineTune
+  const dimensions = orientedDimensions(tune.paper, tune.orientation)
+  const tuneMargin = tuneMarginPx(tune)
   const exportStyle = getExportStyle(settings)
   const pageStyle = {
     '--export-bg': exportStyle.background,
-    '--export-body': exportStyle.body,
-    '--export-heading': exportStyle.heading,
+    '--export-body': tune.bodyColor,
+    '--export-heading': tune.headingColor,
     '--export-muted': exportStyle.muted,
     '--export-rule': exportStyle.rule,
-    '--export-accent': settings.accent,
+    '--export-accent': tune.linkColor,
     '--export-font': exportStyle.fontFamily,
     '--export-line-height': exportStyle.lineHeight,
     '--export-heading-weight': exportStyle.headingWeight,
-    '--export-margin': `${settings.margin}px`,
-    '--page-content-height': `${dimensions.height - 2 * settings.margin}px`,
+    '--export-margin': `${tuneMargin}px`,
+    '--page-content-height': `${dimensions.height - 2 * tuneMargin}px`,
     width: `${dimensions.width}px`,
     minHeight: `${dimensions.height}px`,
   } as CSSProperties
+
+  useEffect(() => {
+    ensureExportFont(tune.bodyFont)
+    ensureExportFont(tune.headingFont)
+  }, [tune.bodyFont, tune.headingFont])
 
   useEffect(() => {
     if (!open) return
@@ -467,10 +472,6 @@ function ExportStudio({
 
   if (!open) return null
 
-  const updateSettings = <K extends keyof ExportSettings>(key: K, value: ExportSettings[K]) => {
-    onSettingsChange({ ...settings, [key]: value })
-  }
-
   const choosePdfTemplate = (id: PdfTemplateId) => {
     const template = getPdfTemplate(id)
     onSettingsChange({
@@ -478,21 +479,40 @@ function ExportStudio({
       pdfTemplate: template.id,
       paper: template.paper,
       margin: template.margin,
+      fineTune: {
+        ...settings.fineTune,
+        paper: template.paper,
+        bodyColor: template.body,
+        headingColor: template.heading,
+        h1Color: template.heading,
+        h2Color: template.heading,
+        h3Color: template.heading,
+        linkColor: template.accent,
+      },
     })
   }
 
   const choosePreset = (preset: ExportSettings['preset']) => {
     const defaults = {
-      editorial: { font: 'serif' as const, accent: '#d85b3f', background: '#ffffff', margin: 64 },
-      minimal: { font: 'sans' as const, accent: '#2f6f68', background: '#ffffff', margin: 76 },
-      academic: { font: 'classic' as const, accent: '#243b5a', background: '#ffffff', margin: 70 },
-      manuscript: { font: 'typewriter' as const, accent: '#8a5c3d', background: '#fffdf8', margin: 72 },
-      swiss: { font: 'sans' as const, accent: '#e33d2e', background: '#ffffff', margin: 66 },
-      letterpress: { font: 'classic' as const, accent: '#9b4d35', background: '#fffaf2', margin: 72 },
-      executive: { font: 'humanist' as const, accent: '#285f91', background: '#ffffff', margin: 66 },
-      notebook: { font: 'mono' as const, accent: '#d69b31', background: '#fffdf5', margin: 68 },
+      editorial: { accent: '#d85b3f', background: '#ffffff', margin: 64 },
+      minimal: { accent: '#2f6f68', background: '#ffffff', margin: 76 },
+      academic: { accent: '#243b5a', background: '#ffffff', margin: 70 },
+      manuscript: { accent: '#8a5c3d', background: '#fffdf8', margin: 72 },
+      swiss: { accent: '#e33d2e', background: '#ffffff', margin: 66 },
+      letterpress: { accent: '#9b4d35', background: '#fffaf2', margin: 72 },
+      executive: { accent: '#285f91', background: '#ffffff', margin: 66 },
+      notebook: { accent: '#d69b31', background: '#fffdf5', margin: 68 },
     }[preset]
-    onSettingsChange({ ...settings, preset, ...defaults })
+    onSettingsChange({
+      ...settings,
+      preset,
+      ...defaults,
+      fineTune: { ...settings.fineTune, linkColor: defaults.accent },
+    })
+  }
+
+  const updateFineTune = (fineTune: FineTuneSettings) => {
+    onSettingsChange({ ...settings, fineTune })
   }
 
   const updateWatermark = <K extends keyof ExportSettings['watermark']>(
@@ -541,20 +561,12 @@ function ExportStudio({
   }
 
   const exportPng = async () => {
-    if (!captureRef.current) return
     setExporting('png')
     try {
-      const blobs: Blob[] = []
-      let pageCount = 0
-      await renderExportPages(async (canvas, index, total) => {
-        pageCount = total
-        const blob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((value) => (value ? resolve(value) : reject(new Error('PNG encoding failed'))), 'image/png')
-        })
-        blobs.push(blob)
-        canvas.width = 1
-        canvas.height = 1
-        if (index % 2 === 1) await new Promise((resolve) => requestAnimationFrame(resolve))
+      // PNGs are rasterized from the real PDF bytes, so splits match the
+      // downloaded PDF page-for-page (not the HTML layout).
+      const blobs = await renderPdfToPngs(title, rendered, settings, 2, (done: number, total: number) => {
+        if (done % 2 === 0 || done === total) onToast(`Rendering PNG page ${done} of ${total}…`)
       })
       const filename = safeFilename(title)
       if (blobs.length === 0) throw new Error('PNG export produced no pages')
@@ -566,117 +578,17 @@ function ExportStudio({
 
       const { default: JSZip } = await import('jszip')
       const archive = new JSZip()
-      blobs.forEach((blob, index) => {
+      blobs.forEach((blob: Blob, index: number) => {
         archive.file(`${filename}-page-${String(index + 1).padStart(2, '0')}.png`, blob)
       })
       const zip = await archive.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
       downloadBlob(zip, `${filename}-png-pages.zip`, 'application/zip')
-      onToast(`${pageCount} high-resolution PNG pages downloaded as ZIP`)
+      onToast(`${blobs.length} high-resolution PNG pages downloaded as ZIP`)
     } catch (error) {
       console.error('PNG export failed', error)
       onToast('This document could not be rendered as PNG pages')
     } finally {
       setExporting(null)
-    }
-  }
-
-  const drawExportWatermark = (
-    context: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    pixelRatio: number,
-  ) => {
-    const watermark = settings.watermark
-    if (!watermark.enabled || !watermark.text.trim()) return
-
-    context.save()
-    context.globalAlpha = watermark.opacity
-    context.fillStyle = watermark.color
-    context.textBaseline = 'middle'
-    const padding = 54 * pixelRatio
-    const text = watermark.text.trim()
-    let size = watermark.size * pixelRatio
-    context.font = `700 ${size}px DM Sans, Arial, sans-serif`
-    const maxWidth = width * 0.82
-    const measuredWidth = context.measureText(text).width
-    if (measuredWidth > maxWidth) {
-      size *= maxWidth / measuredWidth
-      context.font = `700 ${size}px DM Sans, Arial, sans-serif`
-    }
-
-    const draw = (x: number, y: number, align: CanvasTextAlign = 'center') => {
-      context.save()
-      context.textAlign = align
-      context.translate(x, y)
-      context.rotate((watermark.rotation * Math.PI) / 180)
-      context.fillText(text, 0, 0)
-      context.restore()
-    }
-
-    if (watermark.position === 'tiled') {
-      context.textAlign = 'center'
-      context.translate(width / 2, height / 2)
-      context.rotate((watermark.rotation * Math.PI) / 180)
-      const stepX = Math.max(180, watermark.size * 2.8) * pixelRatio
-      const stepY = Math.max(130, watermark.size * 2) * pixelRatio
-      for (let y = -height; y <= height; y += stepY) {
-        for (let x = -width; x <= width; x += stepX) context.fillText(text, x, y)
-      }
-    } else {
-      const positions = {
-        center: [width / 2, height / 2, 'center'],
-        'top-left': [padding, padding, 'left'],
-        'top-right': [width - padding, padding, 'right'],
-        'bottom-left': [padding, height - padding, 'left'],
-        'bottom-right': [width - padding, height - padding, 'right'],
-      } as const
-      const [x, y, align] = positions[watermark.position]
-      draw(x, y, align)
-    }
-    context.restore()
-  }
-
-  const renderExportPages = async (
-    processPage: (canvas: HTMLCanvasElement, index: number, total: number) => Promise<void> | void,
-    includeWatermark = true,
-  ) => {
-    if (!captureRef.current) return
-    await document.fonts.ready
-    const pageHtmls = paginateHtml(rendered, settings, captureRef.current)
-    const article = captureRef.current.querySelector<HTMLElement>('.export-document')
-    if (!article || pageHtmls.length === 0) return
-    const pixelRatio = 2
-    const { toCanvas } = await import('html-to-image')
-    const page = captureRef.current
-    page.style.height = `${dimensions.height}px`
-    page.style.maxHeight = `${dimensions.height}px`
-    page.style.overflow = 'hidden'
-
-    try {
-      for (let index = 0; index < pageHtmls.length; index += 1) {
-        article.innerHTML = pageHtmls[index]
-        const images = Array.from(captureRef.current.querySelectorAll('img'))
-        await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
-        const canvas = await toCanvas(captureRef.current, {
-          cacheBust: false,
-          pixelRatio,
-          backgroundColor: exportStyle.background,
-          width: dimensions.width,
-          height: dimensions.height,
-          canvasWidth: dimensions.width,
-          canvasHeight: dimensions.height,
-          skipAutoScale: true,
-        })
-        const context = canvas.getContext('2d')
-        if (!context) throw new Error('Canvas is unavailable')
-        if (includeWatermark) drawExportWatermark(context, canvas.width, canvas.height, pixelRatio)
-        await processPage(canvas, index, pageHtmls.length)
-      }
-    } finally {
-      article.innerHTML = rendered
-      page.style.height = ''
-      page.style.maxHeight = ''
-      page.style.overflow = ''
     }
   }
 
@@ -917,6 +829,7 @@ function ExportStudio({
                         <span className="preset-copy">
                           <strong>{template.label}</strong>
                           <small>{template.detail}</small>
+                          <small className="template-look">{template.look}</small>
                         </span>
                         <span className={`card-check ${selected ? 'visible' : ''}`} aria-hidden="true">
                           <Check size={13} />
@@ -926,42 +839,14 @@ function ExportStudio({
                   })}
                 </div>
               </section>
-              <section className="control-section">
-                <div className="section-heading">
-                  <div className="section-title">
-                    <span className="step-badge" aria-hidden="true">2</span>
-                    <div>
-                      <h3>Page setup</h3>
-                      <p>Paper size and margins for this template</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="field-row two-up">
-                  <label>
-                    <span>Paper</span>
-                    <select
-                      value={settings.paper}
-                      onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
-                    >
-                      {paperSizeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="range-field">
-                    <span><span>Margin</span><output>{settings.margin}px</output></span>
-                    <input
-                      type="range"
-                      min="36"
-                      max="104"
-                      value={settings.margin}
-                      onChange={(event) => updateSettings('margin', Number(event.target.value))}
-                      aria-label="PDF margin"
-                    />
-                  </label>
-                </div>
-                <p className="field-hint">Switching templates resets paper and margins. Adjust them after picking.</p>
-              </section>
+              <FineTunePanel
+                step="2"
+                title="Fine-tune"
+                subtitle="Fonts, colours, and page layout for this PDF"
+                tune={tune}
+                onChange={updateFineTune}
+                hint="Switching templates resets colours and paper. Adjust them after picking."
+              />
               {watermarkSection('3')}
               </div>
             )}
@@ -1007,72 +892,15 @@ function ExportStudio({
                   })}
                 </div>
               </section>
-              <section className="control-section">
-                <div className="section-heading">
-                  <div className="section-title">
-                    <span className="step-badge" aria-hidden="true">2</span>
-                    <div>
-                      <h3>Fine-tune</h3>
-                      <p>Applies to HTML and PNG, never to PDF</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="field-row two-up">
-                  <label>
-                    <span>Typeface</span>
-                    <select
-                      value={settings.font}
-                      onChange={(event) => updateSettings('font', event.target.value as ExportSettings['font'])}
-                      aria-label="Typeface"
-                    >
-                      <option value="serif">Literary</option>
-                      <option value="classic">Classic serif</option>
-                      <option value="sans">Modern sans</option>
-                      <option value="humanist">Humanist</option>
-                      <option value="mono">Monospace</option>
-                      <option value="typewriter">Typewriter</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Paper</span>
-                    <select
-                      value={settings.paper}
-                      onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
-                    >
-                      {paperSizeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div className="field-row two-up">
-                  <label>
-                    <span>Accent</span>
-                    <span className="color-field">
-                      <input
-                        type="color"
-                        value={settings.accent}
-                        onChange={(event) => updateSettings('accent', event.target.value)}
-                        aria-label="Accent color"
-                      />
-                      <span>{settings.accent}</span>
-                    </span>
-                  </label>
-                  <label>
-                    <span>Page</span>
-                    <span className="color-field">
-                      <input
-                        type="color"
-                        value={settings.background}
-                        onChange={(event) => updateSettings('background', event.target.value)}
-                        aria-label="Page background color"
-                      />
-                      <span>{settings.background}</span>
-                    </span>
-                  </label>
-                </div>
-                <p className="field-hint">HTML downloads are always clean. Watermarks only appear on PNG pages.</p>
-              </section>
+              <FineTunePanel
+                step="2"
+                title="Fine-tune"
+                subtitle="Fonts, colours, and page layout for this page"
+                tune={tune}
+                onChange={updateFineTune}
+                showPageNumbers={false}
+                hint="HTML downloads are always clean. Watermarks only appear on PNG pages."
+              />
               </div>
             )}
 
@@ -1084,42 +912,23 @@ function ExportStudio({
                     <span className="step-badge" aria-hidden="true">1</span>
                     <div>
                       <h3>Page images</h3>
-                      <p>Pictures of the HTML layout, not the PDF</p>
+                      <p>Pictures of the PDF — same pages, same splits</p>
                     </div>
                   </div>
-                  <button type="button" className="section-link" onClick={() => setExportTab('html')}>
-                    Edit style
-                  </button>
                 </div>
                 <p className="field-hint inline">
-                  Using <strong>{presetOptions.find((preset) => preset.value === settings.preset)?.label ?? 'Editorial'}</strong> style. Multi-page documents download as one ZIP.
+                  PNGs are rendered from the <strong>{pdfTemplate.label}</strong> PDF. Multi-page documents download as one ZIP.
                 </p>
-                <div className="field-row two-up">
-                  <label>
-                    <span>Paper</span>
-                    <select
-                      value={settings.paper}
-                      onChange={(event) => updateSettings('paper', event.target.value as ExportSettings['paper'])}
-                    >
-                      {paperSizeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="range-field">
-                    <span><span>Margin</span><output>{settings.margin}px</output></span>
-                    <input
-                      type="range"
-                      min="36"
-                      max="104"
-                      value={settings.margin}
-                      onChange={(event) => updateSettings('margin', Number(event.target.value))}
-                      aria-label="PNG margin"
-                    />
-                  </label>
-                </div>
               </section>
-              {watermarkSection('2')}
+              <FineTunePanel
+                step="2"
+                title="Fine-tune"
+                subtitle="Same controls as the PDF tab"
+                tune={tune}
+                onChange={updateFineTune}
+                hint="PNG pages always match the PDF download exactly."
+              />
+              {watermarkSection('3')}
               </div>
             )}
           </div>
@@ -1127,18 +936,21 @@ function ExportStudio({
           <div className="export-preview-column">
             <div className="preview-label">
               <span>
-                {exportTab === 'pdf' ? 'PDF pages' : exportTab === 'html' ? 'HTML preview' : 'PNG preview'}
+                {exportTab === 'pdf' ? 'PDF pages' : exportTab === 'html' ? 'HTML preview' : 'PNG pages'}
               </span>
               <span>
                 {exportTab === 'pdf'
-                  ? `${pdfTemplate.label} · ${settings.paper.toUpperCase()}`
-                  : `${settings.paper.toUpperCase()} · ${settings.font}`}
+                  ? `${pdfTemplate.label} · ${tune.paper.toUpperCase()}${tune.orientation === 'landscape' ? ' · Landscape' : ''}`
+                  : exportTab === 'png'
+                    ? `${pdfTemplate.label} · ${tune.paper.toUpperCase()}${tune.orientation === 'landscape' ? ' · Landscape' : ''}`
+                    : `${tune.paper.toUpperCase()}${tune.orientation === 'landscape' ? ' · Landscape' : ''}`}
               </span>
             </div>
             <div className="export-preview-viewport">
-              {exportTab === 'pdf' ? (
+              {exportTab === 'pdf' && (
                 <PdfPreview rendered={rendered} settings={settings} template={pdfTemplate} />
-              ) : (
+              )}
+              {exportTab === 'html' && (
                 <div
                   className="export-page-scaler"
                   style={{
@@ -1151,9 +963,12 @@ function ExportStudio({
                     pageStyle={pageStyle}
                     rendered={rendered}
                     settings={settings}
-                    showWatermark={exportTab === 'png'}
+                    showWatermark={false}
                   />
                 </div>
+              )}
+              {exportTab === 'png' && (
+                <PdfPngPages rendered={rendered} settings={settings} />
               )}
             </div>
           </div>
@@ -1169,7 +984,7 @@ function ExportStudio({
             )}
             {exportTab === 'png' && (
               <button type="button" className="export-action primary" onClick={exportPng} disabled={exporting !== null}>
-                <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Rendering pages…' : 'PNG pages'}</strong><small>Pictures of the HTML layout</small></span>
+                <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Rendering pages…' : 'PNG pages'}</strong><small>Pictures of the PDF pages</small></span>
               </button>
             )}
             {exportTab === 'pdf' && (
@@ -1180,15 +995,6 @@ function ExportStudio({
           </div>
         </footer>
       </section>
-      <div className="capture-host" aria-hidden="true" style={{ width: dimensions.width }}>
-        <ExportPage
-          pageStyle={pageStyle}
-          rendered={rendered}
-          settings={settings}
-          capture
-          captureRef={captureRef}
-        />
-      </div>
     </div>
   )
 }

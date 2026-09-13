@@ -9,17 +9,19 @@ export type ExportPreset =
   | 'letterpress'
   | 'executive'
   | 'notebook'
-export type ExportFont = 'serif' | 'classic' | 'sans' | 'humanist' | 'mono' | 'typewriter'
 export type PdfTemplateId =
-  | 'literary'
-  | 'report'
+  | 'novel'
+  | 'brief'
   | 'thesis'
   | 'memo'
-  | 'notes'
+  | 'field-notes'
   | 'letter'
-  | 'spec'
-  | 'folio'
+  | 'technical'
+  | 'magazine'
 export type PaperSize = 'a5' | 'a4' | 'a3' | 'letter' | 'legal' | 'tabloid'
+export type PageOrientation = 'portrait' | 'landscape'
+export type MarginPreset = 'narrow' | 'normal' | 'wide'
+export type HeadingColorMode = 'same' | 'each'
 export type WatermarkPosition =
   | 'center'
   | 'top-left'
@@ -38,21 +40,52 @@ export interface WatermarkSettings {
   color: string
 }
 
+export interface FineTuneSettings {
+  bodyFont: string
+  bodyColor: string
+  headingFont: string
+  headingColor: string
+  headingColorMode: HeadingColorMode
+  h1Color: string
+  h2Color: string
+  h3Color: string
+  linkColor: string
+  paper: PaperSize
+  marginPreset: MarginPreset
+  orientation: PageOrientation
+  pageNumbers: boolean
+}
+
 export interface ExportSettings {
   preset: ExportPreset
   pdfTemplate: PdfTemplateId
-  font: ExportFont
   paper: PaperSize
   margin: number
   accent: string
   background: string
   watermark: WatermarkSettings
+  fineTune: FineTuneSettings
+}
+
+export const defaultFineTune: FineTuneSettings = {
+  bodyFont: 'newsreader',
+  bodyColor: '#282723',
+  headingFont: 'newsreader',
+  headingColor: '#1f1e1b',
+  headingColorMode: 'same',
+  h1Color: '#1f1e1b',
+  h2Color: '#1f1e1b',
+  h3Color: '#1f1e1b',
+  linkColor: '#d85b3f',
+  paper: 'a4',
+  marginPreset: 'normal',
+  orientation: 'portrait',
+  pageNumbers: true,
 }
 
 export const defaultExportSettings: ExportSettings = {
   preset: 'editorial',
-  pdfTemplate: 'literary',
-  font: 'serif',
+  pdfTemplate: 'novel',
   paper: 'a4',
   margin: 76,
   accent: '#d85b3f',
@@ -66,19 +99,28 @@ export const defaultExportSettings: ExportSettings = {
     rotation: 0,
     color: '#8f4232',
   },
+  fineTune: { ...defaultFineTune },
 }
 
 const EXPORT_PRESETS: ExportPreset[] = [
   'editorial', 'minimal', 'academic', 'manuscript', 'swiss', 'letterpress', 'executive', 'notebook',
 ]
 const PDF_TEMPLATE_IDS: PdfTemplateId[] = [
-  'literary', 'report', 'thesis', 'memo', 'notes', 'letter', 'spec', 'folio',
+  'novel', 'brief', 'thesis', 'memo', 'field-notes', 'letter', 'technical', 'magazine',
 ]
-const EXPORT_FONTS: ExportFont[] = ['serif', 'classic', 'sans', 'humanist', 'mono', 'typewriter']
 export const PAPER_SIZES: PaperSize[] = ['a5', 'a4', 'a3', 'letter', 'legal', 'tabloid']
 const WATERMARK_POSITIONS: WatermarkPosition[] = [
   'center', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'tiled',
 ]
+const MARGIN_PRESETS: MarginPreset[] = ['narrow', 'normal', 'wide']
+const ORIENTATIONS: PageOrientation[] = ['portrait', 'landscape']
+const HEADING_COLOR_MODES: HeadingColorMode[] = ['same', 'each']
+
+export const MARGIN_PRESET_PX: Record<MarginPreset, number> = {
+  narrow: 48,
+  normal: 72,
+  wide: 96,
+}
 
 const isHexColor = (value: unknown): value is string =>
   typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
@@ -103,10 +145,14 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
     ? parsed.watermark as Partial<WatermarkSettings>
     : {}
 
+  const fineTuneIn = parsed.fineTune && typeof parsed.fineTune === 'object' && !Array.isArray(parsed.fineTune)
+    ? parsed.fineTune as Partial<FineTuneSettings>
+    : {}
+  const tuneDefaults = defaults.fineTune
+
   return {
     preset: pick(parsed.preset, EXPORT_PRESETS, defaults.preset),
     pdfTemplate: pick(parsed.pdfTemplate, PDF_TEMPLATE_IDS, defaults.pdfTemplate),
-    font: pick(parsed.font, EXPORT_FONTS, defaults.font),
     paper: pick(parsed.paper, PAPER_SIZES, defaults.paper),
     margin: Math.round(clamp(parsed.margin, 36, 104, defaults.margin)),
     accent: isHexColor(parsed.accent) ? parsed.accent : defaults.accent,
@@ -119,6 +165,21 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
       size: Math.round(clamp(watermarkIn.size, 24, 120, defaults.watermark.size)),
       rotation: Math.round(clamp(watermarkIn.rotation, -60, 60, defaults.watermark.rotation)),
       color: isHexColor(watermarkIn.color) ? watermarkIn.color : defaults.watermark.color,
+    },
+    fineTune: {
+      bodyFont: typeof fineTuneIn.bodyFont === 'string' && fineTuneIn.bodyFont ? fineTuneIn.bodyFont : tuneDefaults.bodyFont,
+      bodyColor: isHexColor(fineTuneIn.bodyColor) ? fineTuneIn.bodyColor : tuneDefaults.bodyColor,
+      headingFont: typeof fineTuneIn.headingFont === 'string' && fineTuneIn.headingFont ? fineTuneIn.headingFont : tuneDefaults.headingFont,
+      headingColor: isHexColor(fineTuneIn.headingColor) ? fineTuneIn.headingColor : tuneDefaults.headingColor,
+      headingColorMode: pick(fineTuneIn.headingColorMode, HEADING_COLOR_MODES, tuneDefaults.headingColorMode),
+      h1Color: isHexColor(fineTuneIn.h1Color) ? fineTuneIn.h1Color : tuneDefaults.h1Color,
+      h2Color: isHexColor(fineTuneIn.h2Color) ? fineTuneIn.h2Color : tuneDefaults.h2Color,
+      h3Color: isHexColor(fineTuneIn.h3Color) ? fineTuneIn.h3Color : tuneDefaults.h3Color,
+      linkColor: isHexColor(fineTuneIn.linkColor) ? fineTuneIn.linkColor : tuneDefaults.linkColor,
+      paper: pick(fineTuneIn.paper, PAPER_SIZES, tuneDefaults.paper),
+      marginPreset: pick(fineTuneIn.marginPreset, MARGIN_PRESETS, tuneDefaults.marginPreset),
+      orientation: pick(fineTuneIn.orientation, ORIENTATIONS, tuneDefaults.orientation),
+      pageNumbers: typeof fineTuneIn.pageNumbers === 'boolean' ? fineTuneIn.pageNumbers : tuneDefaults.pageNumbers,
     },
   }
 }
