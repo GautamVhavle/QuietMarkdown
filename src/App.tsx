@@ -801,6 +801,7 @@ function ExportStudio({
                         key={template.id}
                         type="button"
                         aria-pressed={selected}
+                        title={`${template.detail} — ${template.look}`}
                         className={`pdf-template-card ${selected ? 'selected' : ''}`}
                         onClick={() => choosePdfTemplate(template.id)}
                       >
@@ -829,7 +830,6 @@ function ExportStudio({
                         <span className="preset-copy">
                           <strong>{template.label}</strong>
                           <small>{template.detail}</small>
-                          <small className="template-look">{template.look}</small>
                         </span>
                         <span className={`card-check ${selected ? 'visible' : ''}`} aria-hidden="true">
                           <Check size={13} />
@@ -872,6 +872,7 @@ function ExportStudio({
                         key={preset.value}
                         type="button"
                         aria-pressed={selected}
+                        title={preset.detail}
                         className={`preset-card ${selected ? 'selected' : ''}`}
                         onClick={() => choosePreset(preset.value)}
                       >
