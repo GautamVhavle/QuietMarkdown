@@ -829,7 +829,6 @@ function ExportStudio({
                         </span>
                         <span className="preset-copy">
                           <strong>{template.label}</strong>
-                          <small>{template.detail}</small>
                         </span>
                         <span className={`card-check ${selected ? 'visible' : ''}`} aria-hidden="true">
                           <Check size={13} />
@@ -883,7 +882,6 @@ function ExportStudio({
                         </span>
                         <span className="preset-copy">
                           <strong>{preset.label}</strong>
-                          <small>{preset.detail}</small>
                         </span>
                         <span className={`card-check ${selected ? 'visible' : ''}`} aria-hidden="true">
                           <Check size={13} />
