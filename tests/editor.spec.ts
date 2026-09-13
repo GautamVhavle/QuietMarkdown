@@ -203,7 +203,8 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Finish it beautifully.' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'PDF' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('list', { name: 'PDF templates' }).getByRole('button')).toHaveCount(8)
-  await expect(page.getByText('PDF look · not the HTML page')).toBeVisible()
+  await expect(page.locator('.pdf-page-live').first()).toBeVisible()
+  await expect(page.locator('.paged-folio').first()).toContainText(/Page 1 of \d+/)
   await page.getByRole('list', { name: 'PDF templates' }).getByRole('button', { name: 'Report' }).click()
   await expect(page.getByRole('button', { name: /Save as PDF/ })).toContainText('Report')
 

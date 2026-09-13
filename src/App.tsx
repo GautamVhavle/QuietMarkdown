@@ -65,6 +65,7 @@ import { paginateHtml } from './lib/pagination'
 import { createMarkdownPdf } from './lib/pdf-document'
 import { PDF_TEMPLATES, getPdfTemplate } from './lib/pdf-templates'
 import { PagedPreview } from './components/PagedPreview'
+import { PdfPreview } from './components/PdfPreview'
 import { WelcomeTour } from './components/WelcomeTour'
 import { readStorageJson, writeStorageJson } from './lib/storage'
 import { countDocument, renderMarkdown } from './lib/markdown'
@@ -407,24 +408,6 @@ function ExportPage({
   )
 }
 
-function pdfFontStack(font: ExportSettings['font']): string {
-  if (font === 'mono' || font === 'typewriter') return '"Courier New", Courier, monospace'
-  if (font === 'sans' || font === 'humanist') return 'Helvetica, Arial, sans-serif'
-  return 'Times, "Times New Roman", Georgia, serif'
-}
-
-function plainPreviewText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
 interface ExportStudioProps {
   open: boolean
   title: string
@@ -445,7 +428,6 @@ function ExportStudio({
   onToast,
 }: ExportStudioProps) {
   const captureRef = useRef<HTMLDivElement>(null)
-  const exportPreviewRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null)
   const [exportTab, setExportTab] = useState<'pdf' | 'html' | 'png'>('pdf')
   const pdfTemplate = getPdfTemplate(settings.pdfTemplate)
@@ -717,9 +699,6 @@ function ExportStudio({
     { value: 'bottom-left', label: 'Bottom left' },
     { value: 'bottom-right', label: 'Bottom right' },
   ]
-
-  const previewPlain = plainPreviewText(rendered)
-  const pdfExcerpt = previewPlain.slice(0, 280) || 'The downloaded file is a real PDF typeset from this template: selectable text, true paper size, and page breaks between complete lines.'
 
   const watermarkSection = (step: string) => (
     <section className="control-section watermark-section" aria-label="Watermark options">
@@ -1148,7 +1127,7 @@ function ExportStudio({
           <div className="export-preview-column">
             <div className="preview-label">
               <span>
-                {exportTab === 'pdf' ? 'PDF template' : exportTab === 'html' ? 'HTML preview' : 'PNG preview'}
+                {exportTab === 'pdf' ? 'PDF pages' : exportTab === 'html' ? 'HTML preview' : 'PNG preview'}
               </span>
               <span>
                 {exportTab === 'pdf'
@@ -1158,59 +1137,9 @@ function ExportStudio({
             </div>
             <div className="export-preview-viewport">
               {exportTab === 'pdf' ? (
-                <div
-                  className="pdf-look"
-                  style={{
-                    aspectRatio: `${dimensions.width} / ${dimensions.height}`,
-                    padding: `${Math.round(settings.margin * 0.38)}px`,
-                    background: pdfTemplate.background,
-                    color: pdfTemplate.body,
-                    fontFamily: pdfFontStack(pdfTemplate.font),
-                    ['--pdf-accent' as string]: pdfTemplate.accent,
-                    ['--pdf-rule' as string]: pdfTemplate.rule,
-                    ['--pdf-heading' as string]: pdfTemplate.heading,
-                  }}
-                >
-                  {pdfTemplate.chrome === 'bar' && <span className="pdf-look-bar" aria-hidden="true" />}
-                  {pdfTemplate.chrome === 'letterhead' && <span className="pdf-look-letterhead" aria-hidden="true" />}
-                  {pdfTemplate.chrome === 'folio' && (
-                    <>
-                      <span className="pdf-look-folio-top" aria-hidden="true" />
-                      <span className="pdf-look-folio-bottom" aria-hidden="true" />
-                    </>
-                  )}
-                  <Watermark settings={settings} />
-                  <p className="pdf-look-kicker" style={{ color: pdfTemplate.muted }}>PDF look · not the HTML page</p>
-                  <h3 style={{
-                    color: pdfTemplate.heading,
-                    textAlign: pdfTemplate.h1Align,
-                    fontSize: pdfTemplate.h1 + 4,
-                    letterSpacing: pdfTemplate.h1Align === 'center' ? 0 : '-0.02em',
-                  }}
-                  >
-                    {title || 'Untitled document'}
-                  </h3>
-                  <p
-                    className="pdf-look-section"
-                    style={{
-                      color: pdfTemplate.heading,
-                      letterSpacing: pdfTemplate.h2Style === 'uppercase' ? '0.08em' : undefined,
-                      textTransform: pdfTemplate.h2Style === 'uppercase' ? 'uppercase' : undefined,
-                      borderBottom: pdfTemplate.h2Style === 'rule' ? `2px solid ${pdfTemplate.accent}` : undefined,
-                    }}
-                  >
-                    {pdfTemplate.label}
-                  </p>
-                  <p style={{ textIndent: pdfTemplate.firstLineIndent, lineHeight: pdfTemplate.lineHeight }}>
-                    {pdfExcerpt}{previewPlain.length > 280 ? '…' : ''}
-                  </p>
-                  <p style={{ color: pdfTemplate.muted, lineHeight: pdfTemplate.lineHeight }}>
-                    {pdfTemplate.detail}. Paper is {settings.paper.toUpperCase()}.
-                  </p>
-                </div>
+                <PdfPreview rendered={rendered} settings={settings} template={pdfTemplate} />
               ) : (
                 <div
-                  ref={exportPreviewRef}
                   className="export-page-scaler"
                   style={{
                     width: dimensions.width * 0.42,
