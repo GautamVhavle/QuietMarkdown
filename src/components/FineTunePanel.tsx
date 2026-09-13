@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EXPORT_FONTS, ensureExportFont, getExportFont } from '../lib/fonts'
 import type { FineTuneSettings } from '../types'
 
@@ -11,18 +11,41 @@ interface FontPickerProps {
 export function FontPicker({ label, value, onChange }: FontPickerProps) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
   const selected = getExportFont(value)
 
   useEffect(() => {
     ensureExportFont(value)
   }, [value])
 
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
   const matches = EXPORT_FONTS.filter((font) =>
     font.label.toLowerCase().includes(query.trim().toLowerCase()),
   ).slice(0, 12)
 
   return (
-    <div className="font-picker">
+    <div className="font-picker" ref={rootRef}>
       <span className="option-label">{label}</span>
       <button
         type="button"
@@ -41,6 +64,7 @@ export function FontPicker({ label, value, onChange }: FontPickerProps) {
         <div className="font-picker-panel">
           <input
             type="search"
+            autoFocus
             placeholder="Search fonts…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
