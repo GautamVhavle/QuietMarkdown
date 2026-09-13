@@ -58,7 +58,7 @@ import {
   getExportStyle,
   orientedDimensions,
   paperSizeOptions,
-  safeFilename,
+  smartFilename,
   tuneMarginPx,
 } from './lib/export'
 import { createMarkdownPdf } from './lib/pdf-document'
@@ -410,6 +410,7 @@ function ExportPage({
 interface ExportStudioProps {
   open: boolean
   title: string
+  markdown: string
   rendered: string
   settings: ExportSettings
   onSettingsChange: (settings: ExportSettings) => void
@@ -420,6 +421,7 @@ interface ExportStudioProps {
 function ExportStudio({
   open,
   title,
+  markdown,
   rendered,
   settings,
   onSettingsChange,
@@ -530,7 +532,7 @@ function ExportStudio({
       await document.fonts.ready
       downloadBlob(
         createExportHtml(title, rendered, settings),
-        `${safeFilename(title)}.html`,
+        `${smartFilename(markdown, title)}.html`,
         'text/html;charset=utf-8',
       )
       onToast('HTML file downloaded without watermark')
@@ -546,7 +548,7 @@ function ExportStudio({
       if (bytes.byteLength < 8) throw new Error('PDF export produced no pages')
       const pdfBytes = new Uint8Array(bytes.byteLength)
       pdfBytes.set(bytes)
-      downloadBlob(pdfBytes.buffer, `${safeFilename(title)}.pdf`, 'application/pdf')
+      downloadBlob(pdfBytes.buffer, `${smartFilename(markdown, title)}.pdf`, 'application/pdf')
       onToast(
         settings.watermark.enabled && settings.watermark.text.trim()
           ? 'PDF downloaded as a real document with a watermark on every page'
@@ -568,7 +570,7 @@ function ExportStudio({
       const blobs = await renderPdfToPngs(title, rendered, settings, 2, (done: number, total: number) => {
         if (done % 2 === 0 || done === total) onToast(`Rendering PNG page ${done} of ${total}…`)
       })
-      const filename = safeFilename(title)
+      const filename = smartFilename(markdown, title)
       if (blobs.length === 0) throw new Error('PNG export produced no pages')
       if (blobs.length === 1) {
         downloadBlob(blobs[0], `${filename}.png`, 'image/png')
@@ -1631,7 +1633,7 @@ function App() {
   }
 
   const downloadMarkdown = () => {
-    downloadBlob(markdown, `${safeFilename(title)}.md`, 'text/markdown;charset=utf-8')
+    downloadBlob(markdown, `${smartFilename(markdown, title)}.md`, 'text/markdown;charset=utf-8')
     setToast('Markdown downloaded')
   }
 
@@ -2262,6 +2264,7 @@ function App() {
       <ExportStudio
         open={exportOpen}
         title={title}
+        markdown={markdown}
         rendered={rendered}
         settings={exportSettings}
         onSettingsChange={setExportSettings}
