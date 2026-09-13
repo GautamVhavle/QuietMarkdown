@@ -721,101 +721,114 @@ function ExportStudio({
   const previewPlain = plainPreviewText(rendered)
   const pdfExcerpt = previewPlain.slice(0, 280) || 'The downloaded file is a real PDF typeset from this template: selectable text, true paper size, and page breaks between complete lines.'
 
-  const watermarkSection = (
-    <section className="control-section watermark-section">
-      <div className="section-heading watermark-heading">
-        <div>
-          <h3>Watermark</h3>
-          <button
-            type="button"
-            role="switch"
-            aria-label="Toggle watermark"
-            aria-checked={settings.watermark.enabled}
-            className={`switch ${settings.watermark.enabled ? 'on' : ''}`}
-            onClick={() => updateWatermark('enabled', !settings.watermark.enabled)}
-          >
-            <i />
-          </button>
+  const watermarkSection = (step: string) => (
+    <section className="control-section watermark-section" aria-label="Watermark options">
+      <div className="section-heading">
+        <div className="section-title">
+          <span className="step-badge" aria-hidden="true">{step}</span>
+          <div>
+            <h3>Watermark</h3>
+            <p>{exportTab === 'pdf' ? 'Printed as real PDF text' : 'Drawn on PNG pages only'}</p>
+          </div>
         </div>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Toggle watermark"
+          aria-checked={settings.watermark.enabled}
+          className={`switch ${settings.watermark.enabled ? 'on' : ''}`}
+          onClick={() => updateWatermark('enabled', !settings.watermark.enabled)}
+        >
+          <i />
+        </button>
       </div>
 
-      <p className="watermark-scope">
-        {exportTab === 'pdf' ? 'Printed as PDF text on every page.' : 'Drawn on every PNG page. HTML stays clean.'}
-      </p>
-      <div className={settings.watermark.enabled ? '' : 'controls-disabled'}>
-        <label className="text-field">
-          <span>Watermark text</span>
-          <input
-            type="text"
-            maxLength={42}
-            value={settings.watermark.text}
-            placeholder="DRAFT, CONFIDENTIAL…"
-            onChange={(event) => updateWatermark('text', event.target.value)}
-          />
-        </label>
-
-        <div className="position-grid" aria-label="Watermark position">
-          {positionOptions.map((position) => (
-            <button
-              key={position.value}
-              type="button"
-              className={settings.watermark.position === position.value ? 'selected' : ''}
-              onClick={() => updateWatermark('position', position.value)}
-            >
-              <span className={`position-icon position-${position.value}`}><i /></span>
-              {position.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="field-row watermark-ranges">
-          <label className="range-field">
-            <span><span>Opacity</span><output>{Math.round(settings.watermark.opacity * 100)}%</output></span>
+      {settings.watermark.enabled ? (
+        <div className="watermark-body">
+          <label className="text-field">
+            <span>Text</span>
             <input
-              type="range"
-              min="0.03"
-              max="0.35"
-              step="0.01"
-              value={settings.watermark.opacity}
-              onChange={(event) => updateWatermark('opacity', Number(event.target.value))}
+              type="text"
+              maxLength={42}
+              value={settings.watermark.text}
+              placeholder="DRAFT, CONFIDENTIAL…"
+              onChange={(event) => updateWatermark('text', event.target.value)}
             />
           </label>
-          <label className="range-field">
-            <span><span>Size</span><output>{settings.watermark.size}px</output></span>
-            <input
-              type="range"
-              min="24"
-              max="120"
-              value={settings.watermark.size}
-              onChange={(event) => updateWatermark('size', Number(event.target.value))}
-            />
-          </label>
-        </div>
 
-        <div className="field-row watermark-ranges">
-          <label className="range-field">
-            <span><span>Rotation</span><output>{settings.watermark.rotation}°</output></span>
-            <input
-              type="range"
-              min="-60"
-              max="60"
-              value={settings.watermark.rotation}
-              onChange={(event) => updateWatermark('rotation', Number(event.target.value))}
-            />
-          </label>
-          <label>
-            <span>Color</span>
-            <span className="color-field">
+          <div className="option-group">
+            <span className="option-label" id="watermark-position-label">Position</span>
+            <div className="position-grid" role="group" aria-labelledby="watermark-position-label">
+              {positionOptions.map((position) => (
+                <button
+                  key={position.value}
+                  type="button"
+                  aria-pressed={settings.watermark.position === position.value}
+                  className={settings.watermark.position === position.value ? 'selected' : ''}
+                  onClick={() => updateWatermark('position', position.value)}
+                >
+                  <span className={`position-icon position-${position.value}`} aria-hidden="true"><i /></span>
+                  {position.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field-row two-up">
+            <label className="range-field">
+              <span><span>Opacity</span><output>{Math.round(settings.watermark.opacity * 100)}%</output></span>
               <input
-                type="color"
-                value={settings.watermark.color}
-                onChange={(event) => updateWatermark('color', event.target.value)}
+                type="range"
+                min="0.03"
+                max="0.35"
+                step="0.01"
+                value={settings.watermark.opacity}
+                onChange={(event) => updateWatermark('opacity', Number(event.target.value))}
+                aria-label="Watermark opacity"
               />
-              <span>{settings.watermark.color}</span>
-            </span>
-          </label>
+            </label>
+            <label className="range-field">
+              <span><span>Size</span><output>{settings.watermark.size}px</output></span>
+              <input
+                type="range"
+                min="24"
+                max="120"
+                value={settings.watermark.size}
+                onChange={(event) => updateWatermark('size', Number(event.target.value))}
+                aria-label="Watermark size"
+              />
+            </label>
+          </div>
+
+          <div className="field-row two-up">
+            <label className="range-field">
+              <span><span>Rotation</span><output>{settings.watermark.rotation}°</output></span>
+              <input
+                type="range"
+                min="-60"
+                max="60"
+                value={settings.watermark.rotation}
+                onChange={(event) => updateWatermark('rotation', Number(event.target.value))}
+                aria-label="Watermark rotation"
+              />
+            </label>
+            <label>
+              <span>Color</span>
+              <span className="color-field">
+                <input
+                  type="color"
+                  value={settings.watermark.color}
+                  onChange={(event) => updateWatermark('color', event.target.value)}
+                  aria-label="Watermark color"
+                />
+                <span>{settings.watermark.color}</span>
+              </span>
+            </label>
+          </div>
         </div>
-      </div>
+      ) : (
+        <p className="watermark-off-note">Watermark is off. Turn it on to stamp every page.</p>
+      )}
     </section>
   )
 
@@ -879,49 +892,70 @@ function ExportStudio({
             {exportTab === 'pdf' && (
               <div role="tabpanel" id="export-panel-pdf" aria-labelledby="export-tab-pdf">
               <section className="control-section">
-                <p className="export-note">PDF is typeset as its own document. It will not match the HTML page, so it has its own templates.</p>
                 <div className="section-heading">
-                  <div><h3>Templates</h3></div>
-                  <p>Pick one. Paper and watermark can still be adjusted.</p>
+                  <div className="section-title">
+                    <span className="step-badge" aria-hidden="true">1</span>
+                    <div>
+                      <h3>Template</h3>
+                      <p>A real typeset PDF, separate from the HTML page</p>
+                    </div>
+                  </div>
+                  <span className="section-current">{pdfTemplate.label}</span>
                 </div>
                 <div className="pdf-template-grid" role="list" aria-label="PDF templates">
-                  {PDF_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      aria-pressed={settings.pdfTemplate === template.id}
-                      className={`pdf-template-card ${settings.pdfTemplate === template.id ? 'selected' : ''}`}
-                      onClick={() => choosePdfTemplate(template.id)}
-                    >
-                      <span
-                        className={`pdf-mini pdf-mini-${template.chrome}`}
-                        style={{
-                          background: template.background,
-                          color: template.body,
-                          ['--mini-accent' as string]: template.accent,
-                          ['--mini-rule' as string]: template.rule,
-                        }}
-                        aria-hidden="true"
+                  {PDF_TEMPLATES.map((template) => {
+                    const selected = settings.pdfTemplate === template.id
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        aria-pressed={selected}
+                        className={`pdf-template-card ${selected ? 'selected' : ''}`}
+                        onClick={() => choosePdfTemplate(template.id)}
                       >
-                        <b
+                        <span
+                          className={`pdf-mini pdf-mini-${template.chrome}`}
                           style={{
-                            background: template.heading,
-                            width: template.h1Align === 'center' ? '56%' : '80%',
-                            alignSelf: template.h1Align === 'center' ? 'center' : 'flex-start',
+                            background: template.background,
+                            color: template.body,
+                            ['--mini-accent' as string]: template.accent,
+                            ['--mini-rule' as string]: template.rule,
                           }}
-                        />
-                        <i style={{ background: template.body }} />
-                        <i style={{ background: template.body }} />
-                        <i style={{ width: '62%', background: template.muted }} />
-                        <em style={{ background: template.accent }} />
-                      </span>
-                      <span className="preset-copy">
-                        <strong>{template.label}</strong>
-                        <small>{template.detail}</small>
-                      </span>
-                      {settings.pdfTemplate === template.id && <Check size={14} />}
-                    </button>
-                  ))}
+                          aria-hidden="true"
+                        >
+                          <b
+                            style={{
+                              background: template.heading,
+                              width: template.h1Align === 'center' ? '56%' : '80%',
+                              alignSelf: template.h1Align === 'center' ? 'center' : 'flex-start',
+                            }}
+                          />
+                          <i style={{ background: template.body }} />
+                          <i style={{ background: template.body }} />
+                          <i style={{ width: '62%', background: template.muted }} />
+                          <em style={{ background: template.accent }} />
+                        </span>
+                        <span className="preset-copy">
+                          <strong>{template.label}</strong>
+                          <small>{template.detail}</small>
+                        </span>
+                        <span className={`card-check ${selected ? 'visible' : ''}`} aria-hidden="true">
+                          <Check size={13} />
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+              <section className="control-section">
+                <div className="section-heading">
+                  <div className="section-title">
+                    <span className="step-badge" aria-hidden="true">2</span>
+                    <div>
+                      <h3>Page setup</h3>
+                      <p>Paper size and margins for this template</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="field-row two-up">
                   <label>
@@ -943,44 +977,68 @@ function ExportStudio({
                       max="104"
                       value={settings.margin}
                       onChange={(event) => updateSettings('margin', Number(event.target.value))}
+                      aria-label="PDF margin"
                     />
                   </label>
                 </div>
+                <p className="field-hint">Switching templates resets paper and margins. Adjust them after picking.</p>
               </section>
-              {watermarkSection}
+              {watermarkSection('3')}
               </div>
             )}
 
             {exportTab === 'html' && (
               <div role="tabpanel" id="export-panel-html" aria-labelledby="export-tab-html">
               <section className="control-section">
-                <p className="export-note">HTML is a styled webpage. These looks belong to HTML and PNG, not to the PDF file.</p>
                 <div className="section-heading">
-                  <div><h3>Page style</h3></div>
-                  <p>Live preview and PNG pages share this style.</p>
+                  <div className="section-title">
+                    <span className="step-badge" aria-hidden="true">1</span>
+                    <div>
+                      <h3>Page style</h3>
+                      <p>Shared by the HTML file and PNG pages</p>
+                    </div>
+                  </div>
+                  <span className="section-current">{presetOptions.find((preset) => preset.value === settings.preset)?.label}</span>
                 </div>
                 <div className="preset-row" role="list" aria-label="Document styles">
-                  {presetOptions.map((preset) => (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      className={`preset-card ${settings.preset === preset.value ? 'selected' : ''}`}
-                      onClick={() => choosePreset(preset.value)}
-                    >
-                      <span className={`preset-swatch ${preset.value}`}>
-                        <i />
-                        <i />
-                        <i />
-                      </span>
-                      <span className="preset-copy">
-                        <strong>{preset.label}</strong>
-                        <small>{preset.detail}</small>
-                      </span>
-                      {settings.preset === preset.value && <Check size={14} />}
-                    </button>
-                  ))}
+                  {presetOptions.map((preset) => {
+                    const selected = settings.preset === preset.value
+                    return (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        aria-pressed={selected}
+                        className={`preset-card ${selected ? 'selected' : ''}`}
+                        onClick={() => choosePreset(preset.value)}
+                      >
+                        <span className={`preset-swatch ${preset.value}`} aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                        <span className="preset-copy">
+                          <strong>{preset.label}</strong>
+                          <small>{preset.detail}</small>
+                        </span>
+                        <span className={`card-check ${selected ? 'visible' : ''}`} aria-hidden="true">
+                          <Check size={13} />
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="field-row four-up">
+              </section>
+              <section className="control-section">
+                <div className="section-heading">
+                  <div className="section-title">
+                    <span className="step-badge" aria-hidden="true">2</span>
+                    <div>
+                      <h3>Fine-tune</h3>
+                      <p>Applies to HTML and PNG, never to PDF</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="field-row two-up">
                   <label>
                     <span>Typeface</span>
                     <select
@@ -1007,6 +1065,8 @@ function ExportStudio({
                       ))}
                     </select>
                   </label>
+                </div>
+                <div className="field-row two-up">
                   <label>
                     <span>Accent</span>
                     <span className="color-field">
@@ -1032,6 +1092,7 @@ function ExportStudio({
                     </span>
                   </label>
                 </div>
+                <p className="field-hint">HTML downloads are always clean. Watermarks only appear on PNG pages.</p>
               </section>
               </div>
             )}
@@ -1039,12 +1100,21 @@ function ExportStudio({
             {exportTab === 'png' && (
               <div role="tabpanel" id="export-panel-png" aria-labelledby="export-tab-png">
               <section className="control-section">
-                <p className="export-note">
-                  PNG pages are pictures of the HTML layout, not of the PDF template. Page style is {presetOptions.find((preset) => preset.value === settings.preset)?.label ?? 'Editorial'}.
+                <div className="section-heading">
+                  <div className="section-title">
+                    <span className="step-badge" aria-hidden="true">1</span>
+                    <div>
+                      <h3>Page images</h3>
+                      <p>Pictures of the HTML layout, not the PDF</p>
+                    </div>
+                  </div>
+                  <button type="button" className="section-link" onClick={() => setExportTab('html')}>
+                    Edit style
+                  </button>
+                </div>
+                <p className="field-hint inline">
+                  Using <strong>{presetOptions.find((preset) => preset.value === settings.preset)?.label ?? 'Editorial'}</strong> style. Multi-page documents download as one ZIP.
                 </p>
-                <button type="button" className="export-text-link" onClick={() => setExportTab('html')}>
-                  Edit HTML style
-                </button>
                 <div className="field-row two-up">
                   <label>
                     <span>Paper</span>
@@ -1065,11 +1135,12 @@ function ExportStudio({
                       max="104"
                       value={settings.margin}
                       onChange={(event) => updateSettings('margin', Number(event.target.value))}
+                      aria-label="PNG margin"
                     />
                   </label>
                 </div>
               </section>
-              {watermarkSection}
+              {watermarkSection('2')}
               </div>
             )}
           </div>
