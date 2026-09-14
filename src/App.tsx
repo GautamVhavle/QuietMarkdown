@@ -67,6 +67,7 @@ import {
 import { createMarkdownPdf } from './lib/pdf-document'
 import { PDF_TEMPLATES, getPdfTemplate } from './lib/pdf-templates'
 import { ensureExportFont } from './lib/fonts'
+import { ImageAwareEditor } from './components/ImageAwareEditor'
 import { PagedPreview } from './components/PagedPreview'
 import { PdfPreview } from './components/PdfPreview'
 import { FineTunePanel } from './components/FineTunePanel'
@@ -1470,12 +1471,6 @@ function App() {
 
   /* ------------------------ Image embedding ---------------------------- */
 
-  // Pasted images are data URLs thousands of chars long. The textarea shows
-  // a collapsed placeholder per image line so the document stays readable;
-  // the real markdown (with full URLs) is untouched in state and exports.
-  // Defined outside the component (see bottom of file) to avoid recreating
-  // the regex on every render.
-
   const insertIntoEditor = (snippet: string) => {
     const area = editorRef.current
     const start = area?.selectionStart ?? markdown.length
@@ -2044,21 +2039,18 @@ function App() {
                 )}
               </div>
             )}
-            <textarea
-              ref={editorRef}
-              value={collapseImageUrls(markdown)}
-              onChange={(event) => {
+            <ImageAwareEditor
+              markdown={markdown}
+              editorRef={editorRef}
+              onChange={(value) => {
                 const now = Date.now()
                 const coalesce = now - lastTypedAtRef.current < 800
                 lastTypedAtRef.current = now
-                setEditor({ type: 'UPDATE', markdown: event.target.value, coalesce })
+                setEditor({ type: 'UPDATE', markdown: value, coalesce })
               }}
               onScroll={handleEditorScroll}
               onKeyDown={handleEditorKeyDown}
               onPaste={handleEditorPaste}
-              spellCheck="true"
-              autoCapitalize="sentences"
-              aria-label="Markdown content"
             />
           </div>
         </section>
@@ -2285,17 +2277,6 @@ function App() {
       </div>
     </div>
   )
-}
-
-const IMAGE_URL_PATTERN = /!\[[^\]]*\]\((data:image\/[^)\s]+|blob:[^)\s]+)\)/g
-
-// Collapse pasted-image data URLs to a short placeholder for display only.
-// State, preview, and exports always use the full markdown.
-function collapseImageUrls(source: string): string {
-  return source.replace(IMAGE_URL_PATTERN, (_match) => {
-    const alt = _match.slice(2, _match.indexOf(']')).trim() || 'image'
-    return `![${alt}](embedded:image)`
-  })
 }
 
 export default App

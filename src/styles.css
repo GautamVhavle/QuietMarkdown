@@ -202,6 +202,55 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   tab-size: 2;
 }
 .editor-wrap textarea::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+/* Image-aware editor: real text in the textarea, compact chips on top */
+.image-editor-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
+.image-editor-wrap textarea { flex: 1; }
+.image-mirror { position: absolute; inset: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.image-mirror-line { min-height: 1em; }
+.image-chip-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.image-chip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1px clamp(28px, 5.4vw, 86px);
+  pointer-events: none;
+}
+.image-chip-label {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 6px 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-solid);
+  color: var(--ink-soft);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(20,19,17,.08);
+  pointer-events: none;
+}
+.image-chip-icon { color: var(--accent-ink); font-size: 12px; line-height: 1; }
+.image-chip-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-solid);
+  color: var(--ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.image-chip-remove:hover { color: #b91c1c; border-color: #b91c1c; }
 .editor-empty { position: absolute; top: 44px; left: clamp(28px, 5.4vw, 86px); display: flex; flex-direction: column; gap: 7px; color: var(--ink-faint); pointer-events: none; }
 .editor-empty strong { margin-top: 5px; color: var(--ink-soft); font-family: 'Newsreader', Georgia, serif; font-size: 24px; font-weight: 500; }
 .editor-empty span { font-size: 11px; }
