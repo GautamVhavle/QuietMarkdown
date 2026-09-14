@@ -59,7 +59,7 @@ test('synchronizes editor and preview scrolling in split view', async ({ page },
 test('publishes search metadata and accessible creator attribution', async ({ page }) => {
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /free, private Markdown editor/)
   expect(await page.title()).toMatch(/Free Online Markdown Editor/)
-  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://quietmark.vercel.app/og-image.png')
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://quietmarkdown.vercel.app/og-image.png')
   await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', 'en_US')
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
   await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute('href', '/favicon.ico')
@@ -147,7 +147,7 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
   expect(htmlDownload.suggestedFilename()).toMatch(/\.html$/)
   expect(html).toContain('<h1>Export proof</h1>')
   expect(html).not.toContain('watermark')
-  expect(html).not.toContain('quietmark.vercel.app')
+  expect(html).not.toContain('quietmarkdown.vercel.app')
 
   await page.getByRole('tab', { name: 'PDF' }).click()
   const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
@@ -223,7 +223,7 @@ test('switches theme and customizes export watermark', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'PDF' }).click()
   const watermark = page.getByPlaceholder('DRAFT, CONFIDENTIAL…')
-  await expect(watermark).toHaveValue('quietmark.vercel.app')
+  await expect(watermark).toHaveValue('quietmarkdown.vercel.app')
   await watermark.fill('CONFIDENTIAL')
   await page.getByRole('button', { name: 'Tiled' }).click()
   await expect(page.getByRole('dialog').getByText('CONFIDENTIAL').first()).toBeVisible()
@@ -311,7 +311,9 @@ test('embeds pasted images as local data URLs', async ({ page }) => {
       element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }))
     }, 'image/png')
   })
-  await expect(editor).toHaveValue(/!\[snapshot\]\(data:image\/png/, { timeout: 5000 })
+  // The editor displays a collapsed placeholder; the stored markdown keeps
+  // the full data URL (asserted via the rendered preview below).
+  await expect(editor).toHaveValue(/!\[snapshot\]\(embedded:image\)/, { timeout: 5000 })
   if (await page.getByRole('button', { name: 'Preview' }).isVisible()) {
     await expect(page.locator('.markdown-body img[src^="data:image"]')).toHaveCount(1)
   }

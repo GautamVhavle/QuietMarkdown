@@ -8,13 +8,13 @@ import {
 import {
   ArrowRight,
   Check,
-  Files,
+  Code2,
   FileText,
+  FolderOpen,
   ImagePlus,
   Moon,
   Search,
   ShieldCheck,
-  WifiOff,
 } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
@@ -232,21 +232,18 @@ function PrivacySeal({ reduced }: SceneProps) {
 /* ------------------------------------------------------------------ */
 
 const CAPABILITIES = [
-  { icon: Files, title: 'Many documents', note: 'Keep a whole library' },
-  { icon: Search, title: 'Find & replace', note: 'Across everything' },
-  { icon: ImagePlus, title: 'Paste images', note: 'Embeds locally' },
+  { icon: FolderOpen, title: 'Document library', note: 'Many notes, one calm place' },
+  { icon: Search, title: 'Find and replace', note: 'Counts, wrap around, match case' },
+  { icon: ImagePlus, title: 'Paste images', note: 'Downscaled and kept local' },
+  { icon: Code2, title: 'Real Markdown', note: 'Tables, tasks, code, quotes' },
+  { icon: Moon, title: 'Light and dark', note: 'Word count and reading time' },
+  { icon: ShieldCheck, title: 'Open source', note: 'MIT licensed, auditable code' },
 ]
 
-const CAPABILITIES_ROW_TWO = [
-  { icon: WifiOff, title: 'Works offline', note: 'Installs as an app' },
-  { icon: Moon, title: 'Light & dark', note: 'Follows your mood' },
-  { icon: ShieldCheck, title: 'Zero tracking', note: 'Nothing phones home' },
-]
-
-function CapabilityTile({ icon: Icon, title, note }: { icon: typeof Files; title: string; note: string }) {
+function CapabilityTile({ icon: Icon, title, note }: { icon: typeof Search; title: string; note: string }) {
   return (
     <motion.div variants={rise} className="capability-tile">
-      <Icon size={15} />
+      <span className="capability-icon" aria-hidden="true"><Icon size={15} /></span>
       <div>
         <strong>{title}</strong>
         <span>{note}</span>
@@ -264,9 +261,6 @@ function SceneCapabilities() {
     >
       <div className="capability-grid">
         {CAPABILITIES.map((item) => <CapabilityTile key={item.title} {...item} />)}
-      </div>
-      <div className="capability-grid">
-        {CAPABILITIES_ROW_TWO.map((item) => <CapabilityTile key={item.title} {...item} />)}
       </div>
     </SceneFrame>
   )

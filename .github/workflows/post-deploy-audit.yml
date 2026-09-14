@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 25
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
-      PROD_URL: https://quietmark.vercel.app
+      PROD_URL: https://quietmarkdown.vercel.app
       EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Check out repository

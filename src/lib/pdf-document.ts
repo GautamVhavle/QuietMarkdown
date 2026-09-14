@@ -321,7 +321,7 @@ export async function createMarkdownPdf(
   pdf.setTitle(title || 'Untitled document')
   pdf.setSubject('Created locally with QuietMarkdown')
   pdf.setAuthor('QuietMarkdown')
-  pdf.setCreator('quietmark.vercel.app')
+  pdf.setCreator('quietmarkdown.vercel.app')
   pdf.setProducer('QuietMarkdown')
 
   const recipe = getPdfTemplate(settings.pdfTemplate)

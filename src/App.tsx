@@ -1470,6 +1470,12 @@ function App() {
 
   /* ------------------------ Image embedding ---------------------------- */
 
+  // Pasted images are data URLs thousands of chars long. The textarea shows
+  // a collapsed placeholder per image line so the document stays readable;
+  // the real markdown (with full URLs) is untouched in state and exports.
+  // Defined outside the component (see bottom of file) to avoid recreating
+  // the regex on every render.
+
   const insertIntoEditor = (snippet: string) => {
     const area = editorRef.current
     const start = area?.selectionStart ?? markdown.length
@@ -2040,7 +2046,7 @@ function App() {
             )}
             <textarea
               ref={editorRef}
-              value={markdown}
+              value={collapseImageUrls(markdown)}
               onChange={(event) => {
                 const now = Date.now()
                 const coalesce = now - lastTypedAtRef.current < 800
@@ -2279,6 +2285,17 @@ function App() {
       </div>
     </div>
   )
+}
+
+const IMAGE_URL_PATTERN = /!\[[^\]]*\]\((data:image\/[^)\s]+|blob:[^)\s]+)\)/g
+
+// Collapse pasted-image data URLs to a short placeholder for display only.
+// State, preview, and exports always use the full markdown.
+function collapseImageUrls(source: string): string {
+  return source.replace(IMAGE_URL_PATTERN, (_match) => {
+    const alt = _match.slice(2, _match.indexOf(']')).trim() || 'image'
+    return `![${alt}](embedded:image)`
+  })
 }
 
 export default App
