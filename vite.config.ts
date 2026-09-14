@@ -117,7 +117,23 @@ export default defineConfig(() => {
     plugins: [react(), seoPlugin(siteUrl)],
     build: {
       target: 'es2022',
-      sourcemap: true,
+      // No public maps: dist/ ships 5MB+ of .map files otherwise.
+      sourcemap: false,
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            // Heavy export engines, already dynamically imported at use time.
+            if (id.includes('node_modules/pdf-lib') || id.includes('node_modules/pdfjs-dist') || id.includes('node_modules/jszip')) {
+              return 'export-vendor'
+            }
+            if (id.includes('node_modules/framer-motion')) {
+              return 'vendor-motion'
+            }
+            return undefined
+          },
+        },
+      },
     },
   }
 })

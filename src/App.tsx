@@ -46,6 +46,9 @@ import {
   type ClipboardEvent as ReactClipboardEvent,
   type DragEvent,
   type KeyboardEvent,
+  Suspense,
+  lazy,
+  useDeferredValue,
   useEffect,
   useMemo,
   useReducer,
@@ -69,7 +72,7 @@ import { PdfPreview } from './components/PdfPreview'
 import { FineTunePanel } from './components/FineTunePanel'
 import { PdfPngPages } from './components/PdfPngPages'
 import { renderPdfToPngs } from './lib/pdf-raster'
-import { WelcomeTour } from './components/WelcomeTour'
+const WelcomeTour = lazy(() => import('./components/WelcomeTour').then((module) => ({ default: module.WelcomeTour })))
 import { readStorageJson, writeStorageJson } from './lib/storage'
 import { countDocument, renderMarkdown } from './lib/markdown'
 import {
@@ -1045,16 +1048,10 @@ function App() {
   const scrollSyncOriginRef = useRef<'editor' | 'preview' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // The rendered preview trails typing by a single task tick (and slightly
-  // longer for very large documents) so fast keystrokes stay smooth.
-  const [rendered, setRendered] = useState<string>(() => renderMarkdown(activeDoc.markdown))
-  useEffect(() => {
-    const timer = window.setTimeout(
-      () => setRendered(renderMarkdown(markdown)),
-      markdown.length > 30_000 ? 160 : 0,
-    )
-    return () => window.clearTimeout(timer)
-  }, [markdown])
+  // The rendered preview trails typing via useDeferredValue so keystrokes
+  // never block on Markdown parsing + sanitizing, even in huge documents.
+  const deferredMarkdown = useDeferredValue(markdown)
+  const rendered = useMemo(() => renderMarkdown(deferredMarkdown), [deferredMarkdown])
 
   const stats = useMemo(() => countDocument(markdown), [markdown])
   const currentDocument = useMemo(
@@ -2260,7 +2257,11 @@ function App() {
         </>
       )}
 
-      {welcomeOpen && <WelcomeTour onClose={closeWelcome} />}
+      {welcomeOpen && (
+        <Suspense fallback={null}>
+          <WelcomeTour onClose={closeWelcome} />
+        </Suspense>
+      )}
 
       <ExportStudio
         open={exportOpen}

@@ -16,6 +16,8 @@ export function PdfPngPages({ rendered, settings }: PdfPngPagesProps) {
     signal.current = { cancelled: false }
     const current = signal.current
     let active = true
+    // Heavier than it looks: full PDF typeset + rasterize. Longer debounce
+    // keeps typing smooth on long documents.
     const timer = window.setTimeout(() => {
       setLoading(true)
       void renderPdfPreviewUrls(rendered, settings, current)
@@ -28,7 +30,7 @@ export function PdfPngPages({ rendered, settings }: PdfPngPagesProps) {
         .finally(() => {
           if (active) setLoading(false)
         })
-    }, 250)
+    }, 800)
     return () => {
       active = false
       current.cancelled = true
