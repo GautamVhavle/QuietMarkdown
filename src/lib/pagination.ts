@@ -1,17 +1,17 @@
 import type { ExportSettings } from '../types'
-import { pageDimensions } from './export'
+import { orientedDimensions, tuneMarginPx } from './export'
 
 const HEADINGS = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6'])
 const EPSILON = 0.75
 
 export function getContentHeight(settings: ExportSettings): number {
-  const dimensions = pageDimensions[settings.paper]
-  return dimensions.height - 2 * settings.margin
+  const dimensions = orientedDimensions(settings.fineTune.paper, settings.fineTune.orientation)
+  return dimensions.height - 2 * tuneMarginPx(settings.fineTune)
 }
 
 export function getContentWidth(settings: ExportSettings): number {
-  const dimensions = pageDimensions[settings.paper]
-  return dimensions.width - 2 * settings.margin
+  const dimensions = orientedDimensions(settings.fineTune.paper, settings.fineTune.orientation)
+  return dimensions.width - 2 * tuneMarginPx(settings.fineTune)
 }
 
 /**
@@ -202,7 +202,7 @@ export function paginateHtml(
   const article = measurePage.querySelector<HTMLElement>('.export-document')
   if (!article) return [html]
 
-  const dimensions = pageDimensions[settings.paper]
+  const dimensions = orientedDimensions(settings.fineTune.paper, settings.fineTune.orientation)
   const contentHeight = getContentHeight(settings)
   const saved = {
     pageHeight: measurePage.style.height,

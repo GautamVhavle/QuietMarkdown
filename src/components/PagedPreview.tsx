@@ -1,23 +1,25 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { getExportStyle, pageDimensions } from '../lib/export'
+import { getExportStyle, orientedDimensions, tuneMarginPx } from '../lib/export'
 import { paginateHtml } from '../lib/pagination'
 import type { ExportSettings } from '../types'
 
 function pageStyleFor(settings: ExportSettings): CSSProperties {
-  const dimensions = pageDimensions[settings.paper]
+  const tune = settings.fineTune
+  const dimensions = orientedDimensions(tune.paper, tune.orientation)
+  const margin = tuneMarginPx(tune)
   const exportStyle = getExportStyle(settings)
   return {
     '--export-bg': exportStyle.background,
-    '--export-body': exportStyle.body,
-    '--export-heading': exportStyle.heading,
+    '--export-body': tune.bodyColor,
+    '--export-heading': tune.headingColor,
     '--export-muted': exportStyle.muted,
     '--export-rule': exportStyle.rule,
-    '--export-accent': settings.accent,
+    '--export-accent': tune.linkColor,
     '--export-font': exportStyle.fontFamily,
     '--export-line-height': exportStyle.lineHeight,
     '--export-heading-weight': exportStyle.headingWeight,
-    '--export-margin': `${settings.margin}px`,
-    '--page-content-height': `${dimensions.height - 2 * settings.margin}px`,
+    '--export-margin': `${margin}px`,
+    '--page-content-height': `${dimensions.height - 2 * margin}px`,
     width: `${dimensions.width}px`,
     height: `${dimensions.height}px`,
     minHeight: `${dimensions.height}px`,
@@ -37,7 +39,8 @@ export function PagedPreview({ html, settings }: PagedPreviewProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState<string[]>([html])
   const [scale, setScale] = useState(0.5)
-  const dimensions = pageDimensions[settings.paper]
+  const tune = settings.fineTune
+  const dimensions = orientedDimensions(tune.paper, tune.orientation)
   const pageStyle = pageStyleFor(settings)
 
   useLayoutEffect(() => {
@@ -104,7 +107,7 @@ export function PagedPreview({ html, settings }: PagedPreviewProps) {
             />
           </div>
           <figcaption className="paged-folio">
-            Page {index + 1} of {sheets.length} · {settings.paper.toUpperCase()}
+            Page {index + 1} of {sheets.length} · {tune.paper.toUpperCase()}{tune.orientation === 'landscape' ? ' · Landscape' : ''}
           </figcaption>
         </figure>
       ))}

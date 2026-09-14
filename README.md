@@ -5,23 +5,25 @@
 <h1 align="center">QuietMarkdown</h1>
 
 <p align="center">
-  A private, local-first Markdown editor for writing quickly and exporting beautifully.
+  A private, local-first Markdown editor that turns rough notes into<br />
+  print-ready PDFs, portable HTML pages, and high-resolution PNGs —<br />
+  entirely in your browser. No account. No uploads. No tracking.
 </p>
 
 <p align="center">
-  <a href="https://quietmark.vercel.app/"><strong>Open QuietMarkdown</strong></a>
+  <a href="https://quietmarkdown.vercel.app/"><strong>✦ Open QuietMarkdown</strong></a>
   &nbsp;·&nbsp;
-  <a href="#features">Features</a>
+  <a href="#export-studio">Export studio</a>
   &nbsp;·&nbsp;
   <a href="#quick-start">Quick start</a>
   &nbsp;·&nbsp;
-  <a href="#deployment">Deploy</a>
+  <a href="#keyboard-shortcuts">Shortcuts</a>
 </p>
 
 <p align="center">
   <a href="https://github.com/GautamVhavle/QuietMarkdown/actions"><img src="https://img.shields.io/github/actions/workflow/status/GautamVhavle/QuietMarkdown/ci.yml?branch=main&style=flat-square&label=checks" alt="Checks" /></a>
   <a href="https://github.com/GautamVhavle/QuietMarkdown/releases"><img src="https://img.shields.io/github/v/release/GautamVhavle/QuietMarkdown?style=flat-square&label=release" alt="Release" /></a>
-  <a href="https://quietmark.vercel.app/"><img src="https://img.shields.io/badge/live-quietmark.vercel.app-242421?style=flat-square" alt="Live site" /></a>
+  <a href="https://quietmarkdown.vercel.app/"><img src="https://img.shields.io/badge/live-quietmarkdown.vercel.app-242421?style=flat-square" alt="Live site" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-d85b3f?style=flat-square" alt="MIT license" /></a>
   <img src="https://img.shields.io/badge/privacy-local--first-4f8662?style=flat-square" alt="Local first privacy" />
   <img src="https://img.shields.io/badge/offline-ready-8b6fc4?style=flat-square" alt="Offline ready" />
@@ -35,76 +37,75 @@
 
 ## Why QuietMarkdown?
 
-Markdown writing tools tend to choose between two extremes: bare browser utilities with fragile exports, or feature-heavy workspaces that make a blank page feel like a setup task. QuietMarkdown stays deliberately small on the surface and capable underneath.
+Most Markdown tools force a tradeoff: bare browser utilities with fragile exports, or heavy workspaces that make a blank page feel like setup. QuietMarkdown stays calm on the surface and capable underneath.
 
-- **Private by design.** No account, backend, database, analytics, or document upload. Your words never leave your device.
-- **A library, not a lone note.** Keep many documents in one calm workspace.
-- **Fast where it matters.** Live split preview and instant find & replace.
-- **Files you own.** Open, drag & drop, paste images into, and download normal `.md` files. Markdown is the canonical source of truth.
-- **Export with confidence.** Typeset PDF from ready templates, styled standalone HTML, and true 2× PNG pages of the HTML layout.
+- **🔒 Private by design.** No account, backend, database, analytics, or uploads. Words never leave your device.
+- **📚 A library, not a lone note.** Create, switch, duplicate, and delete documents in one workspace.
+- **⚡ Fast where it matters.** Live split preview, instant find & replace, honest autosave state.
+- **📄 Files you own.** Open, drag & drop, paste images into, and download plain `.md` files. Markdown is the source of truth.
+- **🎨 Export with confidence.** Real typeset PDFs, standalone HTML, and PNGs rasterized from the PDF itself — all with full typographic control.
 
-## Features
+## Export studio
 
-### A calm writing workspace
+The heart of QuietMarkdown. Three tabs, one shared design language, guided steps on every tab.
 
-- Write, Split, and Preview modes that adapt from desktop to mobile
-- Multi-document library — create (`⌘/Ctrl+Alt+N`), switch, duplicate, and delete notes in one place
-- Find & Replace with match counts, wrap-around navigation, and match-case toggle (`⌘/Ctrl+F`, `⌘/Ctrl+H`)
-- Paste or drop screenshots straight into the text as embedded data URLs — downscaled and optimized locally
-- Local autosave with an honest save state (including "Not saved" if browser storage refuses writes)
-- Light and dark themes, word count, reading time, accessible controls, reduced-motion support
-- Optional **page-break preview** so you can see the document on A4 (or A5, A3, Letter, Legal, Tabloid) before exporting
-
-### Useful Markdown, not feature bloat
-
-- Headings, bold, italic, strikethrough, links, lists, blockquotes, dividers, tables, task lists, inline code, and fenced code blocks
-- Syntax highlighting for Bash, CSS, HTML, JavaScript, JSON, Markdown, Python, and TypeScript
-- Safe rendered output through DOMPurify sanitization
-- A built-in field guide that demonstrates every supported feature on first launch
-
-### A watermark-first export studio
-
-The studio is tabbed. PDF is typeset as its own document; HTML and PNG share a webpage look. They are not the same file in three costumes.
-
-| Export | What you get |
+| Tab | What you get |
 | --- | --- |
-| **PDF** | A real, selectable document from a ready template. True paper size in PDF points, line-aware page breaks, optional watermark as PDF text |
-| **HTML** | A portable standalone webpage with selected styling and no watermark |
-| **PNG pages** | True 2× pictures of the HTML layout. Multi-page documents download as one ZIP of numbered PNG files |
+| **PDF** | A real, selectable document typeset with `pdf-lib` — true paper sizes in PDF points, line-aware page breaks, per-template chrome (top bars, letterheads, folio rules), optional watermark as PDF text |
+| **HTML** | A portable standalone webpage with your styling baked in. Always clean — never watermarked |
+| **PNG** | High-resolution (2×) pictures of the **PDF pages**, rasterized with `pdf.js`. Splits match the downloaded PDF page-for-page. Multi-page docs download as one numbered ZIP |
 
-PDF templates (pick one and export):
+### Eight templates, actually different
 
-**Literary** · essays and long reads — **Report** · clean business papers — **Thesis** · papers and citations — **Memo** · short internal notes — **Notes** · typewritten drafts — **Letter** · correspondence on US Letter — **Spec** · technical write-ups — **Folio** · magazine features
+| Template | Best for | What makes it distinct |
+| --- | --- | --- |
+| **Novel** | Book-style long reads | Warm paper, indented paragraphs, quiet centered folio |
+| **Brief** | One-page business summaries | Blue top bar, uppercase headings, right-aligned folio |
+| **Thesis** | Formal papers | Centered H1, deep first-line indent, centered folio |
+| **Memo** | Short internal notes | Orange bar, compact type, no page numbers |
+| **Field Notes** | Typewritten drafts | Cream paper, monospace body, no chrome |
+| **Letter** | Correspondence | Letterhead rules, generous margins, US Letter paper |
+| **Technical** | Specs & write-ups | Grey-blue paper, ruled H2s, right folio |
+| **Magazine** | Feature stories | Folio rules top + bottom, biggest display H1, ruled H2 |
 
-HTML and PNG page styles (separate from PDF):
+Picking a template syncs colours and paper so the change is immediately visible. Full descriptions live in hover tooltips; cards stay clean single-line rows.
 
-**Editorial** · warm expressive essays — **Minimal** · quiet working documents — **Academic** · numbered sections, booktabs tables — **Manuscript** · typewriter drafts — **Swiss** · graphic modernist hierarchy — **Letterpress** · classic crafted documents — **Executive** · sharp professional reports — **Notebook** · approachable personal notes
+### Fine-tune everything, on every tab
 
-Watermarks are part of the PDF and PNG experience, not an afterthought. Control text, placement, tile mode, opacity, size, rotation, and color while previewing the final result. HTML and Markdown downloads remain clean.
+Each tab carries the same fine-tune panel:
 
-### Works offline
+- **Body** — searchable font picker (60 Google Fonts, live `Aa` previews, loaded on demand) + colour
+- **Headings** — separate font picker + **All the same / Each level** toggle (one colour, or per-level H1/H2/H3 colours)
+- **Links** — colour
+- **Page layout** — paper size (A5 / A4 / A3 / Letter / Legal / Tabloid), margins (Narrow 48px / Normal 72px / Wide 96px), orientation (Portrait / Landscape), page-numbers toggle
 
-A service worker caches the application shell after your first visit, so QuietMarkdown opens and keeps working without a network connection. Drafts live in browser storage either way.
+Fonts load from Google Fonts on first pick (`display=swap`, cached after) with system-stack fallbacks offline. The PDF typesetter maps each font to its closest base family (serif / sans / mono) so downloads stay faithful.
 
-### Built to be found
+### Watermarks, done right
 
-Technical SEO is treated as a product feature:
+Text, position (center / corners / tiled), opacity, size, rotation, and colour — previewed live on every page. Printed as real PDF text on PDF/PNG exports; HTML and Markdown downloads stay clean.
 
-- The starter field guide is **prerendered into the served HTML**, so crawlers that never execute JavaScript index real content with proper heading hierarchy
-- Structured data (`SoftwareApplication`, `WebSite`, `FAQPage`) for rich results
-- Keyword-first title/description within SERP length limits, self-referencing canonicals, absolute Open Graph/Twitter images
-- `sitemap.xml`, `robots.txt`, `llms.txt` for AI crawlers, HSTS, and a strict CSP validated against the production bundle
-- Lighthouse: **100 SEO · 100 Accessibility · 100 Best Practices**
-- A dedicated Playwright suite (`tests/seo.spec.ts`) asserts the crawler view on every CI run
+### Smart filenames
+
+Downloads are named from your content, not the library title: the first `# H1` wins, otherwise the first real line (formatting stripped), capped at 6 words / 60 characters. `# QuietMarkdown editor field guide` → `quietmarkdown-editor-field-guide.pdf`.
+
+## Writing workspace
+
+- **Write / Split / Preview** modes that adapt from desktop to portrait mobile
+- **Document library** — create (`⌘/Ctrl+Alt+N`), switch, duplicate, delete, clear-page with undo restore
+- **Find & Replace** — match counts, wrap-around, match-case (`⌘/Ctrl+F`, `⌘/Ctrl+H`)
+- **Embedded images** — paste or drop screenshots; downscaled to 1600px and stored as local data URLs
+- **Page-break preview** — see the paginated HTML flow on any paper size before exporting
+- **Themes** — light & dark, word count, reading time, reduced-motion support, accessible controls
+- **Welcome tour** — four-scene animated intro on first visit (reopen anytime via the Q logo)
+
+### Markdown support
+
+Headings, bold, italic, strikethrough, links, lists, blockquotes, dividers, tables, task lists, inline code, and fenced code blocks — with syntax highlighting for Bash, CSS, HTML, JavaScript, JSON, Markdown, Python, and TypeScript. All output sanitized through DOMPurify. A built-in field guide demonstrates everything on first launch.
 
 ## Quick start
 
-### Prerequisites
-
-- Node.js 20 or newer
-- npm 10 or newer
-
-### Run locally
+**Prerequisites:** Node.js 20+, npm 10+
 
 ```bash
 git clone https://github.com/GautamVhavle/QuietMarkdown.git
@@ -113,20 +114,22 @@ npm install
 npm run dev
 ```
 
-Open the local URL printed by Vite.
+Open the URL Vite prints. That's it — no env vars, no backend.
 
 ### Quality checks
 
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Start the Vite development server |
-| `npm run lint` | Lint TypeScript and React source |
-| `npm run build` | Create a static production bundle in `dist` |
-| `npm run test:e2e` | Run desktop, tablet, and mobile Playwright workflows |
+| `npm run lint` | Lint TypeScript and React source (zero warnings) |
+| `npm run build` | Type-check + production bundle in `dist` |
+| `npm run test:e2e` | Playwright suite: desktop, tablet, mobile |
 | `npm run preview` | Serve the production bundle locally |
-| `npm run assets:generate` | Rebuild the branded app icon and social image assets |
+| `npm run assets:generate` | Rebuild branded icons and social images |
 
 ## Keyboard shortcuts
+
+Works identically on macOS (`⌘`) and Windows/Linux (`Ctrl`) — the app listens for both `metaKey` and `ctrlKey`; only the displayed label changes.
 
 | Action | macOS | Windows / Linux |
 | --- | --- | --- |
@@ -140,102 +143,127 @@ Open the local URL printed by Vite.
 | Export studio | `⌘⇧E` | `Ctrl+Shift+E` |
 | Shortcut cheat sheet | `⌘⇧/` | `Ctrl+Shift+/` |
 
+> `Ctrl+H` may collide with browser history in Chrome/Edge — the toolbar search icon always works as a fallback.
+
 ## Architecture
 
 ```text
 src/
-├── App.tsx                  # Editor shell, document library, Export Studio
+├── App.tsx                    # Editor shell, document library, Export Studio
 ├── components/
-│   └── ErrorBoundary.tsx    # Crash guard keeping drafts recoverable
+│   ├── ErrorBoundary.tsx      # Crash guard keeping drafts recoverable
+│   ├── FineTunePanel.tsx      # Shared font/colour/layout controls + font picker
+│   ├── PagedPreview.tsx       # HTML page-break preview (editor pane)
+│   ├── PdfPreview.tsx         # Pagewise PDF-template preview (export studio)
+│   ├── PdfPngPages.tsx        # PDF-rasterized PNG preview (export studio)
+│   └── WelcomeTour.tsx        # First-run animated intro
 ├── lib/
-│   ├── markdown.ts          # Sanitized Markdown rendering
-│   ├── export.ts            # Portable HTML, styling presets, downloads
-│   ├── pagination.ts        # Element-aware page-break computation
-│   ├── pdf-document.ts      # Typeset Markdown → selectable PDF
-│   ├── pdf-templates.ts     # Ready PDF templates (Literary, Report, …)
-│   └── storage.ts           # Quota-safe localStorage wrapper
-├── styles.css               # Design tokens, responsive UI, export presets
-└── types.ts                 # Shared editor/export types
+│   ├── markdown.ts            # Sanitized Markdown rendering
+│   ├── export.ts              # HTML export, page geometry, filenames, presets
+│   ├── fonts.ts               # 60-font library, on-demand Google Fonts loading
+│   ├── pagination.ts          # Element-aware page-break computation
+│   ├── pdf-document.ts        # Markdown → real selectable PDF (pdf-lib)
+│   ├── pdf-raster.ts          # PDF bytes → PNG images (pdf.js)
+│   ├── pdf-templates.ts       # Eight distinct PDF templates
+│   └── storage.ts             # Quota-safe localStorage wrapper
+├── styles.css                 # Design tokens, responsive UI, export styling
+└── types.ts                   # Shared editor/export/fine-tune types
 
-public/
-├── sw.js                    # Offline service worker
-├── site.webmanifest         # PWA manifest
-└── ...                      # Favicons, icons, social image, sample image
-
-scripts/                     # Reproducible brand-asset generator
-tests/                       # Playwright desktop/tablet/mobile workflows
+public/                        # PWA shell: service worker, manifest, icons, SEO files
+scripts/                       # Reproducible brand-asset generator
+tests/                         # Playwright desktop/tablet/mobile workflows
 ```
 
 ### Technology choices
 
-- **React + TypeScript + Vite** for a fast static client application
-- **markdown-it** and **markdown-it-task-lists** for focused GFM rendering
-- **DOMPurify** to sanitize rendered Markdown and every export
-- **Highlight.js** with a deliberately small language set
-- **pdf-lib** typesets a real, selectable PDF from the Markdown (not a screenshot of HTML)
-- **html-to-image** and **JSZip** for PNG page images
-- **Playwright** for responsive end-to-end coverage
+- **React + TypeScript + Vite** — fast static client, zero backend
+- **markdown-it + markdown-it-task-lists** — focused GFM rendering
+- **DOMPurify** — every rendered string sanitized, including exports
+- **Highlight.js** — small deliberate language set
+- **pdf-lib** — real selectable PDFs (not screenshots)
+- **pdf.js** — PNGs rasterized from actual PDF bytes
+- **JSZip** — multi-page PNG downloads as one ZIP
+- **Playwright** — responsive end-to-end coverage on every change
 
 ### How PDF export works
 
-PDF is a real document: Markdown is parsed into headings, paragraphs, lists, tables, code, and images, then laid out from a chosen template in PDF points on A4 (or the paper size you chose). Text stays selectable and pages break between complete lines. That file will not match the HTML page — the studio keeps PDF templates and HTML styles on separate tabs for that reason. The live **Page breaks** preview still uses HTML so you can see how the styled webpage flows before PNG or HTML export.
+Markdown is parsed into headings, paragraphs, lists, tables, code, and images, then laid out from the chosen template in PDF points on the selected paper (orientation-aware). Fine-tune colours and fonts apply throughout; watermarks print as PDF text on every page. The studio's PDF tab previews the same pagination so there are no surprises.
 
 ## Privacy
 
-QuietMarkdown runs entirely in the browser. Markdown is the source of truth; drafts, preferences, and embedded images are stored locally in browser storage. There are no accounts, no uploads, no analytics, and no telemetry of any kind.
+Everything runs in the browser. Drafts, preferences, and embedded images live in `localStorage` on your device. No accounts, uploads, analytics, or telemetry of any kind.
 
-A few practical notes:
+Practical notes:
 
-- Clearing site data removes autosaved drafts — download the `.md` file when you need a durable backup.
-- Remote image URLs can contact their host and can be blocked by browser CORS rules during PNG export. Prefer pasting images directly (they become local data URLs) for dependable private exports.
-- PDF and PNG pages render locally at fixed page dimensions; very large image-heavy documents can require additional browser memory during generation.
+- Clearing site data removes autosaved drafts — download the `.md` when it matters.
+- Remote image URLs can hit CORS limits during export. Paste images directly (they become local data URLs) for dependable private exports.
+- Google Fonts load on demand when you pick a non-system font; offline, the system-stack fallback applies.
+- Very large image-heavy documents need extra browser memory during PDF/PNG generation.
+
+## Works offline
+
+A service worker caches the app shell after your first visit — QuietMarkdown opens and keeps working without a network connection. Drafts persist in browser storage either way.
+
+## Built to be found
+
+Technical SEO as a product feature:
+
+- Starter field guide **prerendered into served HTML** — crawlers without JS still index real content
+- Structured data (`SoftwareApplication`, `WebSite`, `FAQPage`) for rich results
+- Keyword-first title/description, self-referencing canonicals, absolute OG/Twitter images
+- `sitemap.xml`, `robots.txt`, `llms.txt`, HSTS, strict CSP validated against the bundle
+- Lighthouse: **100 SEO · 100 Accessibility · 100 Best Practices**
+- `tests/seo.spec.ts` asserts the crawler view on every CI run
 
 ## Roadmap
 
-QuietMarkdown follows one rule: everything must keep working offline and privately. Candidate directions, roughly in order:
+One rule: everything must keep working offline and privately. Roughly in order:
 
 1. Document folders & tagging within local storage
 2. Optional end-to-end encrypted sync (user-supplied storage, opt-in only)
 3. Footnote and math syntax support
 4. Version snapshots beyond undo history
-5. Team-oriented export branding (custom fonts, logos)
+5. Team export branding (custom fonts, logos)
 
-Feature requests are welcome via [issues](https://github.com/GautamVhavle/QuietMarkdown/issues) — especially ones that fit the local-first philosophy.
+Ideas welcome via [issues](https://github.com/GautamVhavle/QuietMarkdown/issues) — especially ones that fit the local-first philosophy.
 
 ## FAQ
 
 **Where are my documents stored?**
-In your browser's `localStorage` on this device only. Nothing is transmitted anywhere.
+In this browser's `localStorage`, on this device only. Nothing is transmitted anywhere.
 
-**What happens if I clear my browser data?**
-Autosaved drafts go with it. Use *Save .md* (`⌘/Ctrl+Shift+S`) for anything you cannot afford to lose.
+**What if I clear browser data?**
+Autosaved drafts go with it. Use *Save .md* (`⌘/Ctrl+Shift+S`) for anything you can't afford to lose.
 
-**Can I use it on my phone?**
-Yes. The layout adapts to portrait screens with focused Write and Preview modes, and the app installs as a PWA.
+**Does it work on my phone?**
+Yes — portrait layouts with focused Write/Preview modes, zero measured overflow at 390px, and PWA install support.
 
 **Do embedded images bloat storage?**
-They are downscaled to at most 1600px and compressed before insertion, and the save system warns you honestly if storage refuses further writes.
+They're downscaled to 1600px and compressed on paste; the save indicator tells you honestly if storage refuses writes.
+
+**Why do PNG and PDF page breaks match?**
+Because PNGs are rendered from the PDF bytes themselves — not from a separate HTML screenshot path.
 
 ## Deployment
 
-QuietMarkdown deploys as a static application on Vercel. `vercel.json` configures the Vite build, output directory, security headers (CSP, frame protection, content-type sniffing), clean URLs, and immutable caching for compiled assets.
+Static app on Vercel. `vercel.json` sets the Vite build, `dist` output, security headers (CSP, frame protection, no-sniff), clean URLs, and immutable asset caching.
 
 ```bash
 npm run build
 npx vercel --prod
 ```
 
-If you connect a custom domain, set `VITE_SITE_URL` to its origin so QuietMarkdown can generate canonical and Open Graph URLs correctly. See `.env.example`.
+Live at **https://quietmarkdown.vercel.app** (also aliased: `quietmark.vercel.app`). For a custom domain, set `VITE_SITE_URL` so canonicals and OG images follow it. See `.env.example`.
 
 ## Contributing
 
-Small, thoughtful improvements are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md), keep the app local-first, avoid introducing document uploads or accounts, and run all checks before opening a pull request.
+Small, thoughtful improvements welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), keep it local-first (no uploads, no accounts), and run `npm run lint && npm run build && npm run test:e2e` before opening a PR.
 
-Security issues: please follow [SECURITY.md](SECURITY.md) rather than filing a public issue.
+Security issues: follow [SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 
-QuietMarkdown is released under the [MIT License](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 ## Credits
 

@@ -47,7 +47,6 @@
     "dompurify": "latest",
     "framer-motion": "^13.1.1",
     "highlight.js": "latest",
-    "html-to-image": "latest",
     "jszip": "^3.10.1",
     "lucide-react": "latest",
     "markdown-it": "latest",

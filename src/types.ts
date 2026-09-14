@@ -59,8 +59,6 @@ export interface FineTuneSettings {
 export interface ExportSettings {
   preset: ExportPreset
   pdfTemplate: PdfTemplateId
-  paper: PaperSize
-  margin: number
   accent: string
   background: string
   watermark: WatermarkSettings
@@ -86,8 +84,6 @@ export const defaultFineTune: FineTuneSettings = {
 export const defaultExportSettings: ExportSettings = {
   preset: 'editorial',
   pdfTemplate: 'novel',
-  paper: 'a4',
-  margin: 76,
   accent: '#d85b3f',
   background: '#ffffff',
   watermark: {
@@ -153,8 +149,6 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
   return {
     preset: pick(parsed.preset, EXPORT_PRESETS, defaults.preset),
     pdfTemplate: pick(parsed.pdfTemplate, PDF_TEMPLATE_IDS, defaults.pdfTemplate),
-    paper: pick(parsed.paper, PAPER_SIZES, defaults.paper),
-    margin: Math.round(clamp(parsed.margin, 36, 104, defaults.margin)),
     accent: isHexColor(parsed.accent) ? parsed.accent : defaults.accent,
     background: isHexColor(parsed.background) ? parsed.background : defaults.background,
     watermark: {

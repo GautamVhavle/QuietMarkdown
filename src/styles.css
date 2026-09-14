@@ -757,10 +757,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .export-action small { color: var(--ink-faint); font-size: 7px; }
 .export-action.primary { border-color: var(--ink); background: var(--ink); color: var(--surface); }
 .export-action.primary strong, .export-action.primary small { color: var(--surface); }
-.capture-host { position: fixed; top: 0; left: -10000px; pointer-events: none; }
 .export-page-capture { box-shadow: none; transform: none !important; }
-.export-page-capture .live-watermark, .export-page-capture .live-watermark-grid,
-.png-page-source .live-watermark, .png-page-source .live-watermark-grid { display: none; }
+.export-page-capture .live-watermark, .export-page-capture .live-watermark-grid { display: none; }
 
 @media (max-width: 1050px) {
   .document-bar { grid-template-columns: 1fr auto; }

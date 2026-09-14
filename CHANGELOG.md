@@ -6,19 +6,26 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ### Added
 
-- **Paged export preview** — toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as PNG export
-- **Eight ready PDF templates** — Literary, Report, Thesis, Memo, Notes, Letter, Spec, and Folio. Each has its own type, paper, margins, and page chrome
-- **Tabbed export studio** — PDF, HTML, and PNG each have their own path, because a typeset PDF cannot match the HTML page
+- **Paged export preview** — toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as the PDF preview
+- **Eight distinct PDF templates** — Novel, Brief, Thesis, Memo, Field Notes, Letter, Technical, and Magazine. Each has its own type, paper, margins, and page chrome, with a one-line differentiator on every card
+- **Tabbed export studio** — PDF, HTML, and PNG each have their own path with guided steps (template → fine-tune → watermark)
+- **Full fine-tuning on every tab** — 60-font Google Fonts library (searchable, live Aa previews) for body and headings, body/heading/link colours with an *All the same / Each level* heading mode, paper size, Narrow/Normal/Wide margins, Portrait/Landscape orientation, and a page-numbers toggle
+- **PNGs rendered from the real PDF** — PNG pages are rasterized from the downloaded PDF bytes via pdf.js, so splits match the PDF page-for-page
+- **Smart filenames** — downloads derive a short name from the first `# H1` (or first content line), capped at 6 words / 60 characters, instead of the library title
+- **Pagewise PDF preview** — the PDF tab shows every real page with template typography, chrome, watermarks, and folios
 
 ### Changed
 
-- **PDF export is a real document**, not a screenshot of HTML. Text is selectable, pages are true A4/Letter/etc. sizes in PDF points, and line breaks happen in the typesetter instead of by clipping a canvas
-- HTML page styles stay on the HTML tab (and PNG pictures of that layout). PDF templates no longer share those controls
-- PNG pages still capture the HTML layout; the Page breaks preview remains an HTML preview of that flow
+- **PDF export is a real document**, not a screenshot of HTML. Text is selectable, pages are true paper sizes in PDF points (orientation-aware), and line breaks happen in the typesetter instead of by clipping a canvas
+- Fine-tune settings are shared across PDF, HTML, and PNG: what you see is what you download
+- Template and preset cards are fixed-height, name-only rows with full descriptions in hover tooltips
+- Mobile export studio hardened: zero measured overflow at 390px, stacked controls, in-flow font picker
 
 ### Removed
 
 - Real-time Mermaid diagram rendering from the editor, preview, and exports
+- Legacy HTML-screenshot PNG pipeline (`html-to-image`, canvas watermark painter, capture host)
+- Redundant top-level `paper` / `margin` export settings (superseded by fine-tune paper + margin presets)
 
 ### Planned
 

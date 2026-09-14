@@ -479,8 +479,6 @@ function ExportStudio({
     onSettingsChange({
       ...settings,
       pdfTemplate: template.id,
-      paper: template.paper,
-      margin: template.margin,
       fineTune: {
         ...settings.fineTune,
         paper: template.paper,
@@ -496,14 +494,14 @@ function ExportStudio({
 
   const choosePreset = (preset: ExportSettings['preset']) => {
     const defaults = {
-      editorial: { accent: '#d85b3f', background: '#ffffff', margin: 64 },
-      minimal: { accent: '#2f6f68', background: '#ffffff', margin: 76 },
-      academic: { accent: '#243b5a', background: '#ffffff', margin: 70 },
-      manuscript: { accent: '#8a5c3d', background: '#fffdf8', margin: 72 },
-      swiss: { accent: '#e33d2e', background: '#ffffff', margin: 66 },
-      letterpress: { accent: '#9b4d35', background: '#fffaf2', margin: 72 },
-      executive: { accent: '#285f91', background: '#ffffff', margin: 66 },
-      notebook: { accent: '#d69b31', background: '#fffdf5', margin: 68 },
+      editorial: { accent: '#d85b3f', background: '#ffffff' },
+      minimal: { accent: '#2f6f68', background: '#ffffff' },
+      academic: { accent: '#243b5a', background: '#ffffff' },
+      manuscript: { accent: '#8a5c3d', background: '#fffdf8' },
+      swiss: { accent: '#e33d2e', background: '#ffffff' },
+      letterpress: { accent: '#9b4d35', background: '#fffaf2' },
+      executive: { accent: '#285f91', background: '#ffffff' },
+      notebook: { accent: '#d69b31', background: '#fffdf5' },
     }[preset]
     onSettingsChange({
       ...settings,
@@ -2072,10 +2070,13 @@ function App() {
                 <label className="paper-size-field">
                   <span className="visually-hidden">Paper size</span>
                   <select
-                    value={exportSettings.paper}
+                    value={exportSettings.fineTune.paper}
                     onChange={(event) => setExportSettings({
                       ...exportSettings,
-                      paper: event.target.value as ExportSettings['paper'],
+                      fineTune: {
+                        ...exportSettings.fineTune,
+                        paper: event.target.value as ExportSettings['fineTune']['paper'],
+                      },
                     })}
                     aria-label="Paper size"
                   >
