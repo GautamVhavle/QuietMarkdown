@@ -3,47 +3,36 @@
  * Vite build (vite.config.ts) can prerender it into index.html for crawlers
  * and the app can load it as the first library document.
  */
-export const STARTER_TITLE = 'QuietMarkdown editor field guide'
+export const STARTER_TITLE = 'Welcome to QuietMarkdown'
 
-export const starterMarkdown = `# QuietMarkdown editor field guide
+export const starterMarkdown = `# Welcome to QuietMarkdown
 
-*A private Markdown editor with PDF, HTML, and PNG export, ready to become something worth sharing.*
+*A private Markdown editor that turns plain text into polished PDFs, web pages, and image pages.*
 
-**Updated August 2026** · QuietMarkdown is a calm place to shape an idea into a **clear, portable document**. This starter note shows the Markdown features available at your fingertips, from quick inline styling to polished export-ready structure.
+This starter note doubles as a tour. Read it, edit it, delete it. Everything here demonstrates a feature you can use right away.
 
 > Good tools make room for good thinking. Keep the words, remove the noise.
 
-## Who QuietMarkdown is for
+## Write in plain text
 
-- **Writers** who want a focused Markdown editor and beautiful, shareable documents
-- **Students** who need a private draft space with reliable PDF export
-- **Professionals** who want presentable notes, proposals, and reports without sending work to a cloud service
+A sentence can be **important**, *considered*, or ~~unnecessary~~. Use inline code like \`npm run build\` when precision matters, and turn a useful reference into a [helpful link](https://www.markdownguide.org/).
 
-## 1. Start with a useful brief
+Headings give your document shape. This note uses them to walk you through the app, one section at a time.
 
-Every strong document has a simple job. Define the outcome before you polish the language.
+## Stay organized
 
 - **Audience:** the person who needs to understand this
 - **Decision:** the action this document should support
 - **Evidence:** the details that make the decision easier
 - **Next step:** the smallest useful action after reading
 
-A sentence can be **important**, *considered*, or ~~unnecessary~~. Use inline code like \`npm run build\` when precision matters, and turn a useful reference into a [helpful link](https://www.markdownguide.org/).
+Lists, tables, and checklists all work:
 
-## 2. Compare the options
-
-| Approach | Best for | Tradeoff |
+| View | Best for | Tradeoff |
 | --- | --- | --- |
 | Write | Focused drafting | Source only |
 | Split | Editing with context | Less room on small screens |
 | Preview | Reading and presenting | No visible source |
-
-## 3. Build the work in small passes
-
-1. Write a rough first version.
-2. Give every section a useful heading.
-3. Cut anything that does not move the reader forward.
-4. Export only when the structure feels settled.
 
 ### A practical checklist
 
@@ -52,15 +41,13 @@ A sentence can be **important**, *considered*, or ~~unnecessary~~. Use inline co
 - [ ] The final reader has reviewed the closing section
 - [ ] The export style and watermark fit the audience
 
-## 4. Make the document visual
+## Add visuals and code
 
 ![QuietMarkdown document illustration](/quietmarkdown-example.svg)
 
-*Use local images when you want reliable private exports. Images hosted elsewhere can be affected by browser permissions during PNG export.*
+*Paste screenshots straight into the editor. They stay local and export reliably.*
 
-## 5. Preserve exact details
-
-Fenced code blocks stay readable in the editor, preview, HTML export, PDF print flow, and PNG pages.
+Fenced code blocks stay readable everywhere: editor, preview, HTML, PDF, and PNG.
 
 \`\`\`ts
 type Draft = {
@@ -76,18 +63,18 @@ const draft: Draft = {
 }
 \`\`\`
 
-> A blockquote is useful for a guiding principle, a source excerpt, or a short pull quote that deserves a pause.
+> A blockquote fits a guiding principle, a source excerpt, or a short pull quote that deserves a pause.
 
 ---
 
-## 5.5. From idea to a shareable document
-
-QuietMarkdown can turn a rough idea into a clear, polished document. Shape the structure, refine anything that is not ready, then export when the story is easy to follow.
+## Export with confidence
 
 1. Define the outcome and audience.
 2. Draft headings and write a first pass.
-3. Review with the reader in mind — revise until the next step is obvious.
-4. Choose an export preset and watermark, then download PDF, HTML, or PNG.
+3. Review with the reader in mind, then revise until the next step is obvious.
+4. Open **Export**, pick a template, fine tune fonts and layout, then download PDF, HTML, or PNG.
+
+Your Markdown remains the source of truth. Everything else is presentation.
 
 ---
 
@@ -95,18 +82,14 @@ QuietMarkdown can turn a rough idea into a clear, polished document. Shape the s
 
 ### Does QuietMarkdown upload my document?
 
-No. QuietMarkdown is frontend-only. Your draft and export preferences stay in this browser unless you download or share a file yourself.
+No. QuietMarkdown runs entirely in your browser. Drafts and preferences stay on this device unless you download or share a file yourself.
 
 ### Which export should I choose?
 
-Use **PDF** for a print-ready document, **HTML** for a portable styled page, and **PNG pages** when you need high-resolution image pages for sharing.
+Use **PDF** for a print-ready document, **HTML** for a portable styled page, and **PNG pages** for high-resolution image pages. PNGs are rendered from the PDF itself, so page breaks always match.
 
 ### Can I use images in a document?
 
-Yes. Local image paths are the most dependable choice for privacy and export. Images hosted on another service can be affected by that service's browser permissions.
+Yes. Pasting images keeps them local, which is the most dependable choice for privacy and export. Images hosted elsewhere can be blocked by browser permissions.
 
-## 6. Finish with intent
-
-Choose **Editorial** for a warm, expressive essay, **Minimal** for a quiet working document, or **Academic** for a formal paper with numbered sections. Then open **Export** to set paper size, typography, color, and a watermark before downloading.
-
-Your Markdown remains the source of truth. Everything else is presentation. QuietMarkdown is open source on [GitHub](https://github.com/GautamVhavle/QuietMarkdown).`
+QuietMarkdown is open source on [GitHub](https://github.com/GautamVhavle/QuietMarkdown).`

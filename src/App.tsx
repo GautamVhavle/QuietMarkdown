@@ -801,7 +801,7 @@ function ExportStudio({
                         key={template.id}
                         type="button"
                         aria-pressed={selected}
-                        title={`${template.detail} — ${template.look}`}
+                        title={`${template.detail}. ${template.look}`}
                         className={`pdf-template-card ${selected ? 'selected' : ''}`}
                         onClick={() => choosePdfTemplate(template.id)}
                       >
@@ -911,7 +911,7 @@ function ExportStudio({
                     <span className="step-badge" aria-hidden="true">1</span>
                     <div>
                       <h3>Page images</h3>
-                      <p>Pictures of the PDF — same pages, same splits</p>
+                      <p>Pictures of the PDF. Same pages, same splits.</p>
                     </div>
                   </div>
                 </div>
@@ -1383,14 +1383,14 @@ function App() {
 
   /**
    * Wipe the active page and begin again. Uses UPDATE (not RESET) so the
-   * previous draft stays one undo away — a destructive action with a
+   * previous draft stays one undo away: a destructive action with a
    * safety net.
    */
   const clearActiveDoc = () => {
     setEditor({ type: 'UPDATE', markdown: '' })
     setTitle('Untitled document')
     setDocsOpen(false)
-    setToast(`Page cleared — press ${isMac ? '⌘Z' : 'Ctrl+Z'} to restore`)
+    setToast(`Page cleared. Press ${isMac ? '⌘Z' : 'Ctrl+Z'} to restore`)
     requestAnimationFrame(() => editorRef.current?.focus())
   }
 

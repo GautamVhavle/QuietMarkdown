@@ -151,7 +151,7 @@ export function PdfPreview({ rendered, settings, template }: PdfPreviewProps) {
                 <span className="pdf-chrome-folio-bottom" aria-hidden="true" />
               </>
             )}
-            <p className="pdf-empty">Nothing to preview yet — write something in the editor.</p>
+            <p className="pdf-empty">Nothing to preview yet. Write something in the editor.</p>
           </div>
         </div>
       )}

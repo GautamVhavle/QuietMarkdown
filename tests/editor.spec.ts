@@ -13,11 +13,11 @@ test.beforeEach(async ({ page }) => {
 
 test('loads a local-first document and renders Markdown', async ({ page }, testInfo) => {
   await expect(page.getByRole('banner').getByText('QuietMarkdown')).toBeVisible()
-  await expect(page.getByLabel('Markdown content')).toContainText('# QuietMarkdown editor field guide')
+  await expect(page.getByLabel('Markdown content')).toContainText('# Welcome to QuietMarkdown')
   if (testInfo.project.name !== 'desktop-chromium') {
     await page.getByRole('button', { name: 'Preview' }).click()
   }
-  await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome to QuietMarkdown' })).toBeVisible()
   const saveLabel = testInfo.project.name !== 'desktop-chromium'
     ? page.locator('.footer-save')
     : page.locator('.save-indicator')
@@ -30,7 +30,7 @@ test('uses focused Write and Preview modes on portrait devices', async ({ page }
   await expect(page.getByLabel('Markdown content')).toBeVisible()
 
   await page.getByRole('button', { name: 'Preview' }).click()
-  await expect(page.getByRole('heading', { name: 'QuietMarkdown editor field guide' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Welcome to QuietMarkdown' })).toBeVisible()
   await expect(page.getByLabel('Markdown content')).toBeHidden()
 
   await page.getByRole('button', { name: 'Write' }).click()
@@ -126,7 +126,7 @@ test('opens a local Markdown file', async ({ page }, testInfo) => {
     await expect(page.getByText('field-notes.md opened')).toBeVisible()
     await page.getByRole('button', { name: 'Documents' }).click()
     await expect(page.locator('.docs-list li')).toHaveCount(2)
-    await expect(page.locator('.docs-list')).toContainText('QuietMarkdown editor field guide')
+    await expect(page.locator('.docs-list')).toContainText('Welcome to QuietMarkdown')
   }
 })
 
@@ -218,7 +218,7 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.getByLabel('Paper size')).toBeVisible()
 
   await page.getByRole('tab', { name: 'PNG' }).click()
-  await expect(page.getByText('Pictures of the PDF — same pages, same splits')).toBeVisible()
+  await expect(page.getByText('Pictures of the PDF. Same pages, same splits.')).toBeVisible()
   await expect(page.getByLabel('Choose body font, currently Newsreader')).toBeVisible()
 
   await page.getByRole('tab', { name: 'PDF' }).click()
@@ -242,16 +242,16 @@ test('creates, switches between, and deletes documents in the library', async ({
   await editor.fill('# Second note\n\nLibrary content.')
   await page.waitForTimeout(700)
 
-  // Switch back to the field guide and confirm content follows.
+  // Switch back to the welcome note and confirm content follows.
   await documents.click()
   const rows = page.locator('.docs-list li')
   await expect(rows).toHaveCount(2)
-  await rows.filter({ hasText: 'QuietMarkdown editor field guide' }).locator('.docs-row').click()
-  await expect(page.locator('.markdown-body h1').first()).toContainText('QuietMarkdown editor field guide')
+  await rows.filter({ hasText: 'Welcome to QuietMarkdown' }).locator('.docs-row').click()
+  await expect(page.locator('.markdown-body h1').first()).toContainText('Welcome to QuietMarkdown')
 
   // Reload: the active document survives.
   await page.reload()
-  await expect(page.getByLabel('Document title')).toHaveValue(/QuietMarkdown editor/)
+  await expect(page.getByLabel('Document title')).toHaveValue('Welcome to QuietMarkdown')
 
   // Switch to the second doc, then delete it (two-step confirm).
   await documents.click()

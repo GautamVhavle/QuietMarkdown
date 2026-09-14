@@ -16,7 +16,7 @@ async function loadPdfJs() {
 
 /**
  * Render the real PDF bytes to PNG images, one per page. This guarantees
- * PNG splits match the downloaded PDF exactly — unlike HTML screenshots.
+ * PNG splits match the downloaded PDF exactly, unlike HTML screenshots.
  */
 export async function renderPdfToPngs(
   title: string,

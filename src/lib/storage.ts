@@ -26,7 +26,7 @@ export function readStorageJson<T>(key: string): { value: T | null; corrupted: b
     try {
       return { value: JSON.parse(raw) as T, corrupted: false }
     } catch {
-      // Valid key, invalid JSON — treat as corrupted rather than crashing.
+      // Valid key, invalid JSON. Treat as corrupted rather than crashing.
       return { value: null, corrupted: true }
     }
   } catch {

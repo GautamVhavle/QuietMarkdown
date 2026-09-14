@@ -64,7 +64,7 @@ function SceneFrame({
 }
 
 /* ------------------------------------------------------------------ */
-/* Scene 1 visual — a miniature editor typing its own preview          */
+/* Scene 1 visual: a miniature editor typing its own preview           */
 /* ------------------------------------------------------------------ */
 
 const DEMO_LINES = [
@@ -160,7 +160,7 @@ function MiniEditorDemo({ reduced }: SceneProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Scene 2 visual — the privacy seal                                   */
+/* Scene 2 visual: the privacy seal                                    */
 /* ------------------------------------------------------------------ */
 
 function PrivacySeal({ reduced }: SceneProps) {
@@ -228,7 +228,7 @@ function PrivacySeal({ reduced }: SceneProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Scene 3 visual — capability grid                                    */
+/* Scene 3 visual: capability grid                                     */
 /* ------------------------------------------------------------------ */
 
 const CAPABILITIES = [
@@ -273,7 +273,7 @@ function SceneCapabilities() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Scene 4 visual — export formats fanning out                         */
+/* Scene 4 visual: export formats fanning out                          */
 /* ------------------------------------------------------------------ */
 
 const EXPORT_CARDS = [
@@ -348,7 +348,7 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
       key="s0"
       eyebrow="Welcome"
       title="A quiet place to write."
-      lead="QuietMarkdown turns plain Markdown into polished documents — entirely inside your browser."
+      lead="QuietMarkdown turns plain Markdown into polished documents, entirely inside your browser."
     >
       <motion.div variants={rise}><MiniEditorDemo reduced={reduced} /></motion.div>
     </SceneFrame>,
@@ -356,7 +356,7 @@ export function WelcomeTour({ onClose }: { onClose: () => void }) {
       key="s1"
       eyebrow="Private by design"
       title="Your words stay yours."
-      lead="No account. No cloud. Drafts live in this browser alone — download a file any time you like."
+      lead="No account. No cloud. Drafts live in this browser alone. Download a file any time you like."
     >
       <motion.div variants={rise}><PrivacySeal reduced={reduced} /></motion.div>
     </SceneFrame>,

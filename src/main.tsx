@@ -23,7 +23,7 @@ createRoot(document.getElementById('root')!).render(
 )
 
 // Offline support for the local-first promise. The service worker only runs
-// in production builds — during development Vite's module graph would defeat
+// in production builds. During development Vite's module graph would defeat
 // caching and serve stale modules after edits.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
