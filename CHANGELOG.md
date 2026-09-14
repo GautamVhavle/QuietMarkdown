@@ -6,13 +6,13 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 ### Added
 
-- **Paged export preview** — toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as the PDF preview
-- **Eight distinct PDF templates** — Novel, Brief, Thesis, Memo, Field Notes, Letter, Technical, and Magazine. Each has its own type, paper, margins, and page chrome, with a one-line differentiator on every card
-- **Tabbed export studio** — PDF, HTML, and PNG each have their own path with guided steps (template → fine-tune → watermark)
-- **Full fine-tuning on every tab** — 60-font Google Fonts library (searchable, live Aa previews) for body and headings, body/heading/link colours with an *All the same / Each level* heading mode, paper size, Narrow/Normal/Wide margins, Portrait/Landscape orientation, and a page-numbers toggle
-- **PNGs rendered from the real PDF** — PNG pages are rasterized from the downloaded PDF bytes via pdf.js, so splits match the PDF page-for-page
-- **Smart filenames** — downloads derive a short name from the first `# H1` (or first content line), capped at 6 words / 60 characters, instead of the library title
-- **Pagewise PDF preview** — the PDF tab shows every real page with template typography, chrome, watermarks, and folios
+- **Paged export preview**: toggle *Page breaks* in the live preview to see the document on A4 (default) or A5, A3, Letter, Legal, and Tabloid, using the same page-break algorithm as the PDF preview
+- **Eight distinct PDF templates**: Novel, Brief, Thesis, Memo, Field Notes, Letter, Technical, and Magazine. Each has its own type, paper, margins, and page chrome, with a one-line differentiator on every card
+- **Tabbed export studio**: PDF, HTML, and PNG each have their own path with guided steps (template → fine-tune → watermark)
+- **Full fine-tuning on every tab**: 60-font Google Fonts library (searchable, live Aa previews) for body and headings, body/heading/link colours with an *All the same / Each level* heading mode, paper size, Narrow/Normal/Wide margins, Portrait/Landscape orientation, and a page-numbers toggle
+- **PNGs rendered from the real PDF**: PNG pages are rasterized from the downloaded PDF bytes via pdf.js, so splits match the PDF page-for-page
+- **Smart filenames**: downloads derive a short name from the first `# H1` (or first content line), capped at 6 words / 60 characters, instead of the library title
+- **Pagewise PDF preview**: the PDF tab shows every real page with template typography, chrome, watermarks, and folios
 
 ### Changed
 
@@ -31,15 +31,15 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 
 - Document folders & tagging within local storage
 
-## [1.1.0] — 2026-02-17
+## [1.1.0], 2026-02-17
 
 ### Added
 
-- **Welcome tour** — four-scene animated introduction (Framer Motion): miniature live-preview demo, privacy seal, capability grid with self-drawing Mermaid spark, export fan. Opens on first visit; the Q logo reopens it anytime.
-- **Document library** — create (`⌘/Ctrl+Alt+N`), switch, duplicate, and delete documents; older single-document saves migrate automatically.
-- **Find & Replace** — match counts, wrap-around navigation, match-case toggle (`⌘/Ctrl+F`, `⌘/Ctrl+H`).
-- **Embedded images** — paste or drop images as locally downscaled data URLs.
-- **Offline support** — service worker caches the app shell (PWA-installable).
+- **Welcome tour**: four-scene animated introduction (Framer Motion): miniature live-preview demo, privacy seal, capability grid with self-drawing Mermaid spark, export fan. Opens on first visit; the Q logo reopens it anytime.
+- **Document library**: create (`⌘/Ctrl+Alt+N`), switch, duplicate, and delete documents; older single-document saves migrate automatically.
+- **Find & Replace**: match counts, wrap-around navigation, match-case toggle (`⌘/Ctrl+F`, `⌘/Ctrl+H`).
+- **Embedded images**: paste or drop images as locally downscaled data URLs.
+- **Offline support**: service worker caches the app shell (PWA-installable).
 - **Clear page · start fresh** action in the Documents menu with one-step undo restore.
 
 ### Changed
@@ -55,7 +55,7 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 - Storage quota failures surfaced honestly ("Not saved") instead of silently breaking autosave
 - CSP violation from the no-js swap script (hash-exempted); Lighthouse Best Practices back to 100
 
-## [1.0.0] — Initial public release
+## [1.0.0], Initial public release
 
 ### Added
 

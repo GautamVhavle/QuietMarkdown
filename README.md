@@ -6,7 +6,7 @@
 
 <p align="center">
   A private, local-first Markdown editor that turns rough notes into<br />
-  print-ready PDFs, portable HTML pages, and high-resolution PNGs —<br />
+  print-ready PDFs, portable HTML pages, and high-resolution PNGs <br />
   entirely in your browser. No account. No uploads. No tracking.
 </p>
 
@@ -43,7 +43,7 @@ Most Markdown tools force a tradeoff: bare browser utilities with fragile export
 - **📚 A library, not a lone note.** Create, switch, duplicate, and delete documents in one workspace.
 - **⚡ Fast where it matters.** Live split preview, instant find & replace, honest autosave state.
 - **📄 Files you own.** Open, drag & drop, paste images into, and download plain `.md` files. Markdown is the source of truth.
-- **🎨 Export with confidence.** Real typeset PDFs, standalone HTML, and PNGs rasterized from the PDF itself — all with full typographic control.
+- **🎨 Export with confidence.** Real typeset PDFs, standalone HTML, and PNGs rasterized from the PDF itself. All with full typographic control.
 
 ## Export studio
 
@@ -51,8 +51,8 @@ The heart of QuietMarkdown. Three tabs, one shared design language, guided steps
 
 | Tab | What you get |
 | --- | --- |
-| **PDF** | A real, selectable document typeset with `pdf-lib` — true paper sizes in PDF points, line-aware page breaks, per-template chrome (top bars, letterheads, folio rules), optional watermark as PDF text |
-| **HTML** | A portable standalone webpage with your styling baked in. Always clean — never watermarked |
+| **PDF** | A real, selectable document typeset with `pdf-lib`. True paper sizes in PDF points, line-aware page breaks, per-template chrome (top bars, letterheads, folio rules), optional watermark as PDF text |
+| **HTML** | A portable standalone webpage with your styling baked in. Always clean, never watermarked |
 | **PNG** | High-resolution (2×) pictures of the **PDF pages**, rasterized with `pdf.js`. Splits match the downloaded PDF page-for-page. Multi-page docs download as one numbered ZIP |
 
 ### Eight templates, actually different
@@ -74,16 +74,16 @@ Picking a template syncs colours and paper so the change is immediately visible.
 
 Each tab carries the same fine-tune panel:
 
-- **Body** — searchable font picker (60 Google Fonts, live `Aa` previews, loaded on demand) + colour
-- **Headings** — separate font picker + **All the same / Each level** toggle (one colour, or per-level H1/H2/H3 colours)
-- **Links** — colour
-- **Page layout** — paper size (A5 / A4 / A3 / Letter / Legal / Tabloid), margins (Narrow 48px / Normal 72px / Wide 96px), orientation (Portrait / Landscape), page-numbers toggle
+- **Body**: Searchable font picker (60 Google Fonts, live `Aa` previews, loaded on demand) + colour
+- **Headings**: Separate font picker + **All the same / Each level** toggle (one colour, or per-level H1/H2/H3 colours)
+- **Links**: Colour
+- **Page layout**: Paper size (A5 / A4 / A3 / Letter / Legal / Tabloid), margins (Narrow 48px / Normal 72px / Wide 96px), orientation (Portrait / Landscape), page-numbers toggle
 
 Fonts load from Google Fonts on first pick (`display=swap`, cached after) with system-stack fallbacks offline. The PDF typesetter maps each font to its closest base family (serif / sans / mono) so downloads stay faithful.
 
 ### Watermarks, done right
 
-Text, position (center / corners / tiled), opacity, size, rotation, and colour — previewed live on every page. Printed as real PDF text on PDF/PNG exports; HTML and Markdown downloads stay clean.
+Text, position (center / corners / tiled), opacity, size, rotation, and colour. Previewed live on every page. Printed as real PDF text on PDF/PNG exports; HTML and Markdown downloads stay clean.
 
 ### Smart filenames
 
@@ -92,16 +92,16 @@ Downloads are named from your content, not the library title: the first `# H1` w
 ## Writing workspace
 
 - **Write / Split / Preview** modes that adapt from desktop to portrait mobile
-- **Document library** — create (`⌘/Ctrl+Alt+N`), switch, duplicate, delete, clear-page with undo restore
-- **Find & Replace** — match counts, wrap-around, match-case (`⌘/Ctrl+F`, `⌘/Ctrl+H`)
-- **Embedded images** — paste or drop screenshots; downscaled to 1600px and stored as local data URLs
-- **Page-break preview** — see the paginated HTML flow on any paper size before exporting
-- **Themes** — light & dark, word count, reading time, reduced-motion support, accessible controls
-- **Welcome tour** — four-scene animated intro on first visit (reopen anytime via the Q logo)
+- **Document library**: Create (`⌘/Ctrl+Alt+N`), switch, duplicate, delete, clear-page with undo restore
+- **Find & Replace**: Match counts, wrap-around, match-case (`⌘/Ctrl+F`, `⌘/Ctrl+H`)
+- **Embedded images**: Paste or drop screenshots; downscaled to 1600px and stored as local data URLs
+- **Page-break preview**: See the paginated HTML flow on any paper size before exporting
+- **Themes**: Light & dark, word count, reading time, reduced-motion support, accessible controls
+- **Welcome tour**: Four-scene animated intro on first visit (reopen anytime via the Q logo)
 
 ### Markdown support
 
-Headings, bold, italic, strikethrough, links, lists, blockquotes, dividers, tables, task lists, inline code, and fenced code blocks — with syntax highlighting for Bash, CSS, HTML, JavaScript, JSON, Markdown, Python, and TypeScript. All output sanitized through DOMPurify. A built-in field guide demonstrates everything on first launch.
+Headings, bold, italic, strikethrough, links, lists, blockquotes, dividers, tables, task lists, inline code, and fenced code blocks, with syntax highlighting for Bash, CSS, HTML, JavaScript, JSON, Markdown, Python, and TypeScript. All output sanitized through DOMPurify. A built-in field guide demonstrates everything on first launch.
 
 ## Quick start
 
@@ -114,7 +114,7 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints. That's it — no env vars, no backend.
+Open the URL Vite prints. That's it. No env vars, no backend.
 
 ### Quality checks
 
@@ -129,7 +129,7 @@ Open the URL Vite prints. That's it — no env vars, no backend.
 
 ## Keyboard shortcuts
 
-Works identically on macOS (`⌘`) and Windows/Linux (`Ctrl`) — the app listens for both `metaKey` and `ctrlKey`; only the displayed label changes.
+Works identically on macOS (`⌘`) and Windows/Linux (`Ctrl`). The app listens for both `metaKey` and `ctrlKey`; only the displayed label changes.
 
 | Action | macOS | Windows / Linux |
 | --- | --- | --- |
@@ -143,7 +143,7 @@ Works identically on macOS (`⌘`) and Windows/Linux (`Ctrl`) — the app listen
 | Export studio | `⌘⇧E` | `Ctrl+Shift+E` |
 | Shortcut cheat sheet | `⌘⇧/` | `Ctrl+Shift+/` |
 
-> `Ctrl+H` may collide with browser history in Chrome/Edge — the toolbar search icon always works as a fallback.
+> `Ctrl+H` may collide with browser history in Chrome/Edge. The toolbar search icon always works as a fallback.
 
 ## Architecture
 
@@ -176,14 +176,14 @@ tests/                         # Playwright desktop/tablet/mobile workflows
 
 ### Technology choices
 
-- **React + TypeScript + Vite** — fast static client, zero backend
-- **markdown-it + markdown-it-task-lists** — focused GFM rendering
-- **DOMPurify** — every rendered string sanitized, including exports
-- **Highlight.js** — small deliberate language set
-- **pdf-lib** — real selectable PDFs (not screenshots)
-- **pdf.js** — PNGs rasterized from actual PDF bytes
-- **JSZip** — multi-page PNG downloads as one ZIP
-- **Playwright** — responsive end-to-end coverage on every change
+- **React + TypeScript + Vite**: Fast static client, zero backend
+- **markdown-it + markdown-it-task-lists**: Focused GFM rendering
+- **DOMPurify**: Every rendered string sanitized, including exports
+- **Highlight.js**: Small deliberate language set
+- **pdf-lib**: Real selectable PDFs (not screenshots)
+- **pdf.js**: PNGs rasterized from actual PDF bytes
+- **JSZip**: Multi-page PNG downloads as one ZIP
+- **Playwright**: Responsive end-to-end coverage on every change
 
 ### How PDF export works
 
@@ -195,20 +195,20 @@ Everything runs in the browser. Drafts, preferences, and embedded images live in
 
 Practical notes:
 
-- Clearing site data removes autosaved drafts — download the `.md` when it matters.
+- Clearing site data removes autosaved drafts. Download the `.md` when it matters.
 - Remote image URLs can hit CORS limits during export. Paste images directly (they become local data URLs) for dependable private exports.
 - Google Fonts load on demand when you pick a non-system font; offline, the system-stack fallback applies.
 - Very large image-heavy documents need extra browser memory during PDF/PNG generation.
 
 ## Works offline
 
-A service worker caches the app shell after your first visit — QuietMarkdown opens and keeps working without a network connection. Drafts persist in browser storage either way.
+A service worker caches the app shell after your first visit. QuietMarkdown opens and keeps working without a network connection. Drafts persist in browser storage either way.
 
 ## Built to be found
 
 Technical SEO as a product feature:
 
-- Starter field guide **prerendered into served HTML** — crawlers without JS still index real content
+- Starter field guide **prerendered into served HTML**. Crawlers without JS still index real content
 - Structured data (`SoftwareApplication`, `WebSite`, `FAQPage`) for rich results
 - Keyword-first title/description, self-referencing canonicals, absolute OG/Twitter images
 - `sitemap.xml`, `robots.txt`, `llms.txt`, HSTS, strict CSP validated against the bundle
@@ -225,7 +225,7 @@ One rule: everything must keep working offline and privately. Roughly in order:
 4. Version snapshots beyond undo history
 5. Team export branding (custom fonts, logos)
 
-Ideas welcome via [issues](https://github.com/GautamVhavle/QuietMarkdown/issues) — especially ones that fit the local-first philosophy.
+Ideas welcome via [issues](https://github.com/GautamVhavle/QuietMarkdown/issues). Especially ones that fit the local-first philosophy.
 
 ## FAQ
 
@@ -236,13 +236,13 @@ In this browser's `localStorage`, on this device only. Nothing is transmitted an
 Autosaved drafts go with it. Use *Save .md* (`⌘/Ctrl+Shift+S`) for anything you can't afford to lose.
 
 **Does it work on my phone?**
-Yes — portrait layouts with focused Write/Preview modes, zero measured overflow at 390px, and PWA install support.
+Yes. Portrait layouts with focused Write/Preview modes, zero measured overflow at 390px, and PWA install support.
 
 **Do embedded images bloat storage?**
 They're downscaled to 1600px and compressed on paste; the save indicator tells you honestly if storage refuses writes.
 
 **Why do PNG and PDF page breaks match?**
-Because PNGs are rendered from the PDF bytes themselves — not from a separate HTML screenshot path.
+Because PNGs are rendered from the PDF bytes themselves. Not from a separate HTML screenshot path.
 
 ## Deployment
 
@@ -263,7 +263,7 @@ Security issues: follow [SECURITY.md](SECURITY.md), not a public issue.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
