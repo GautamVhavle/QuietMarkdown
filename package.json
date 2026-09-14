@@ -1,7 +1,7 @@
 {
   "name": "quietmarkdown",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "A private, local-first Markdown editor with a watermark-first export studio (PDF, HTML, PNG pages).",
   "keywords": [

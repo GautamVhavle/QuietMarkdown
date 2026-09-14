@@ -2,7 +2,7 @@
 
 All notable changes to QuietMarkdown are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0], 2026-09-14
 
 ### Added
 
@@ -26,6 +26,12 @@ All notable changes to QuietMarkdown are documented here. The format follows [Ke
 - Real-time Mermaid diagram rendering from the editor, preview, and exports
 - Legacy HTML-screenshot PNG pipeline (`html-to-image`, canvas watermark painter, capture host)
 - Redundant top-level `paper` / `margin` export settings (superseded by fine-tune paper + margin presets)
+
+### Performance
+
+- Initial JS roughly halved via vendor chunk splitting (export engines + motion load lazily)
+- Welcome tour lazy loaded, preview rendering deferred, PNG preview debounced, sourcemaps removed from dist
+- Google Fonts preconnect in document head
 
 ### Planned
 
