@@ -67,7 +67,6 @@ import {
 import { createMarkdownPdf } from './lib/pdf-document'
 import { PDF_TEMPLATES, getPdfTemplate } from './lib/pdf-templates'
 import { ensureExportFont } from './lib/fonts'
-import { ImageAwareEditor } from './components/ImageAwareEditor'
 import { PagedPreview } from './components/PagedPreview'
 import { PdfPreview } from './components/PdfPreview'
 import { FineTunePanel } from './components/FineTunePanel'
@@ -1229,12 +1228,15 @@ function App() {
     return () => window.removeEventListener('dragend', clearDrag)
   }, [])
 
-  // Detect platform (Mac vs Windows) and mobile
+  // Detect platform (Mac vs Windows) and mobile. Prefers the Client Hints
+  // API where available; navigator.platform is deprecated and frozen to
+  // 'Win32' in newer Chrome, so it can no longer be trusted on its own.
   useEffect(() => {
     const checkPlatform = () => {
+      const hinted = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform?.toLowerCase() ?? ''
       const userAgent = navigator.userAgent.toLowerCase()
-      const platform = navigator.platform.toLowerCase()
-      const mac = platform.includes('mac') || userAgent.includes('macintosh')
+      const legacy = typeof navigator.platform === 'string' ? navigator.platform.toLowerCase() : ''
+      const mac = hinted.includes('mac') || legacy.includes('mac') || userAgent.includes('macintosh') || userAgent.includes('mac os x')
       const mobile = window.innerWidth < 768 || /android|iphone|ipad|ipod/i.test(userAgent)
       setIsMac(mac)
       setIsMobile(mobile)
@@ -1472,11 +1474,48 @@ function App() {
   /* ------------------------ Image embedding ---------------------------- */
 
   const insertIntoEditor = (snippet: string) => {
+    // The textarea shows collapsed placeholders, so translate its caret
+    // through the display text to find the matching offset in real markdown.
     const area = editorRef.current
-    const start = area?.selectionStart ?? markdown.length
-    const end = area?.selectionEnd ?? markdown.length
-    const before = markdown.slice(0, start)
-    const after = markdown.slice(end)
+    const display = collapseImageUrls(markdown)
+    const caret = area ? Math.min(area.selectionStart ?? display.length, display.length) : display.length
+    const endCaret = area ? Math.min(area.selectionEnd ?? caret, display.length) : caret
+    let realStart: number
+    let realEnd: number
+    {
+      let di = 0
+      let ri = 0
+      IMAGE_URL_PATTERN.lastIndex = 0
+      let match: RegExpExecArray | null
+      const nextMatch = () => {
+        match = IMAGE_URL_PATTERN.exec(markdown)
+        while (match && /[\r\n]/.test(match[0])) match = IMAGE_URL_PATTERN.exec(markdown)
+        return match
+      }
+      let pending = nextMatch()
+      const advance = (target: number) => {
+        while (di < target) {
+          if (pending && ri === pending.index) {
+            const alt = pending[0].slice(2, pending[0].indexOf(']')).trim() || 'image'
+            const placeholder = `![${alt}](embedded:image)`
+            if (di + placeholder.length > target) break
+            di += placeholder.length
+            ri += pending[0].length
+            pending = nextMatch()
+          } else {
+            const stop = pending ? Math.min(pending.index, markdown.length) : markdown.length
+            const step = Math.min(stop - ri, target - di)
+            di += step
+            ri += step
+          }
+        }
+        return ri
+      }
+      realStart = advance(caret)
+      realEnd = realStart + (endCaret - caret)
+    }
+    const before = markdown.slice(0, realStart)
+    const after = markdown.slice(realEnd)
     // Keep Markdown tidy: embedded images sit on their own line.
     const prefix = !before || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n'
     const cursor = before.length + prefix.length + snippet.length + 2
@@ -1486,7 +1525,16 @@ function App() {
   const embedImageFile = async (file: File): Promise<void> => {
     try {
       let dataUrl: string
-      if (file.type === 'image/svg+xml') {
+      if (file.type === 'image/gif') {
+        // Canvas re-encoding keeps only the first frame, so keep GIF bytes
+        // as-is to preserve animation.
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result))
+          reader.onerror = () => reject(new Error('read failed'))
+          reader.readAsDataURL(file)
+        })
+      } else if (file.type === 'image/svg+xml') {
         dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = () => resolve(String(reader.result))
@@ -1832,9 +1880,16 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  const restoreStarterTemplate = () => {
+    setTitle(STARTER_TITLE)
+    setEditor({ type: 'UPDATE', markdown: starterMarkdown })
+    setWelcomeOpen(true)
+  }
+
   const toolbarItems = [
     { action: 'undo' as const, icon: ArrowLeft, label: 'Undo', shortcut: isMac ? '⌘Z' : 'Ctrl+Z', group: 'history', disabled: !canUndo },
     { action: 'redo' as const, icon: ArrowRight, label: 'Redo', shortcut: isMac ? '⌘⇧Z' : 'Ctrl+Y', group: 'history', disabled: !canRedo },
+    { action: 'clear' as const, icon: Eraser, label: 'Clear', shortcut: '', group: 'history', disabled: !markdown },
     { action: 'heading1' as const, icon: Heading1, label: 'Title', shortcut: '', group: 'headings' },
     { action: 'heading2' as const, icon: Heading2, label: 'Section heading', shortcut: '', group: 'headings' },
     { action: 'heading3' as const, icon: Heading3, label: 'Small heading', shortcut: '', group: 'headings' },
@@ -1855,6 +1910,7 @@ function App() {
   const handleToolbarAction = (action: string) => {
     if (action === 'undo') return undo()
     if (action === 'redo') return redo()
+    if (action === 'clear') return clearActiveDoc()
     applyFormat(action as FormatAction)
   }
 
@@ -1869,12 +1925,12 @@ function App() {
         <button
           type="button"
           className="brand"
-          onClick={() => setWelcomeOpen(true)}
-          title="What is QuietMarkdown?"
+          onClick={restoreStarterTemplate}
+          title="Home: replay the intro and restore the starter template"
         >
           <span className="brand-mark" aria-hidden="true">Q</span>
           <span className="brand-name">QuietMarkdown</span>
-          <span className="local-badge" aria-hidden="true"><ShieldCheck size={11} /> Local</span>
+          <span className="local-badge" aria-hidden="true"><ShieldCheck size={11} /> Private</span>
         </button>
 
         <nav className="view-switcher" aria-label="Document view">
@@ -2039,18 +2095,21 @@ function App() {
                 )}
               </div>
             )}
-            <ImageAwareEditor
-              markdown={markdown}
-              editorRef={editorRef}
-              onChange={(value) => {
+            <textarea
+              ref={editorRef}
+              value={collapseImageUrls(markdown)}
+              onChange={(event) => {
                 const now = Date.now()
                 const coalesce = now - lastTypedAtRef.current < 800
                 lastTypedAtRef.current = now
-                setEditor({ type: 'UPDATE', markdown: value, coalesce })
+                setEditor({ type: 'UPDATE', markdown: expandImageUrls(event.target.value, markdown), coalesce })
               }}
               onScroll={handleEditorScroll}
               onKeyDown={handleEditorKeyDown}
               onPaste={handleEditorPaste}
+              spellCheck="true"
+              autoCapitalize="sentences"
+              aria-label="Markdown content"
             />
           </div>
         </section>
@@ -2277,6 +2336,33 @@ function App() {
       </div>
     </div>
   )
+}
+
+const IMAGE_URL_PATTERN = /!\[[^\]]*\]\((data:image\/[^)\s]+|blob:[^)\s]+)\)/g
+const COLLAPSED_PATTERN = /!\[[^\]]*\]\(embedded:image\)/g
+
+// Collapse pasted-image data URLs to a short placeholder for display only.
+// State, preview, and exports always use the full markdown. The pattern
+// requires the URL to sit on one line, so a data URL the user split while
+// editing stays visible as raw text instead of silently dropping the image.
+function collapseImageUrls(source: string): string {
+  return source.replace(IMAGE_URL_PATTERN, (match) => {
+    if (/[\r\n]/.test(match)) return match
+    const alt = match.slice(2, match.indexOf(']')).trim() || 'image'
+    return `![${alt}](embedded:image)`
+  })
+}
+
+// Map the edited display text back onto the real markdown. Each surviving
+// placeholder restores its full data URL by position; placeholders the user
+// deleted stay deleted, and any new ones they typed stay as typed.
+function expandImageUrls(displayValue: string, realMarkdown: string): string {
+  const realMatches = [...realMarkdown.matchAll(IMAGE_URL_PATTERN)]
+    .map((match) => match[0])
+    .filter((url) => !/[\r\n]/.test(url))
+  if (realMatches.length === 0) return displayValue
+  let index = 0
+  return displayValue.replace(COLLAPSED_PATTERN, () => realMatches[index++] ?? '')
 }
 
 export default App

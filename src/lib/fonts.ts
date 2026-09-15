@@ -82,8 +82,12 @@ export const EXPORT_FONTS: ExportFontDef[] = [
 ]
 
 const loadedFonts = new Set<string>()
+let fontsBlockedNoticeShown = false
 
-/** Load a Google Font on demand. Safe to call repeatedly; cached per family. */
+/** Load a Google Font on demand. Safe to call repeatedly; cached per family.
+ * Export fonts are the single network call this app ever makes, and only
+ * when the user picks a non-bundled font. If the fetch fails (offline,
+ * tracker-blocked), the system fallback stack in `stack` still renders. */
 export function ensureExportFont(id: string): void {
   const def = EXPORT_FONTS.find((font) => font.id === id)
   if (!def?.google || loadedFonts.has(def.google)) return
@@ -91,6 +95,12 @@ export function ensureExportFont(id: string): void {
   const link = document.createElement('link')
   link.rel = 'stylesheet'
   link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(def.google).replace(/%20/g, '+')}:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&display=swap`
+  link.onerror = () => {
+    if (!fontsBlockedNoticeShown) {
+      fontsBlockedNoticeShown = true
+      console.info('Export font unavailable; using local fallback stack.')
+    }
+  }
   document.head.append(link)
 }
 
