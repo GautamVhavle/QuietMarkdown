@@ -36,6 +36,8 @@
     "assets:generate": "node scripts/generate-brand-assets.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings 0",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },
@@ -63,12 +65,18 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "eslint": "latest",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import-x": "latest",
+    "eslint-plugin-jsx-a11y": "latest",
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
+    "jsdom": "latest",
+    "stylelint": "latest",
+    "stylelint-config-standard": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "vitest": "latest"
   }
 }

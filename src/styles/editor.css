@@ -1,0 +1,36 @@
+/* Workspace grid, editor pane, find & replace. Split from styles.css; selectors unchanged. */
+.workspace.mode-write { grid-template-columns: 1fr; }
+.workspace.mode-preview { grid-template-columns: 1fr; }
+.workspace.mode-write .preview-pane, .workspace.mode-write .pane-divider,
+.workspace.mode-preview .editor-pane, .workspace.mode-preview .pane-divider { display: none; }
+.editor-pane, .preview-pane { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+.editor-pane { background: var(--surface); }
+.preview-pane { background: var(--surface-soft); }
+.pane-divider { background: var(--line); }
+.pane-label { justify-content: space-between; height: 31px; padding: 0 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink-faint); font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.pane-label span:last-child { font-weight: 500; letter-spacing: .04em; }
+.editor-wrap { position: relative; flex: 1; min-height: 0; }
+.editor-wrap textarea {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 0;
+  padding: 42px clamp(28px, 5.4vw, 86px) 120px;
+  overflow-wrap: anywhere;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  caret-color: var(--accent);
+  font-family: 'DM Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.82;
+  tab-size: 2;
+}
+.editor-wrap textarea::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.editor-empty { position: absolute; top: 44px; left: clamp(28px, 5.4vw, 86px); display: flex; flex-direction: column; gap: 7px; color: var(--ink-faint); pointer-events: none; }
+.editor-empty strong { margin-top: 5px; color: var(--ink-soft); font-family: 'Newsreader', Georgia, serif; font-size: 24px; font-weight: 500; }
+.editor-empty span { font-size: 11px; }
+.preview-scroll { flex: 1; min-height: 0; overflow: auto; padding: 42px clamp(28px, 6vw, 90px) 120px; }

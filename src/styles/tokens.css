@@ -1,0 +1,44 @@
+/* Design tokens: light/dark custom properties. Split from styles.css; selectors unchanged. */
+:root {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #242421;
+  background: #f7f6f3;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --app-bg: #f7f6f3;
+  --surface: #fdfcf9;
+  --surface-solid: #fff;
+  --surface-soft: #f2f1ed;
+  --surface-hover: #ecebe6;
+  --ink: #242421;
+  --ink-soft: #61615b;
+  /* WCAG AA on paper surfaces (4.5:1); was #92918a at 3.13:1 */
+  --ink-faint: #6f6d66;
+  --line: #deddd7;
+  --line-soft: #ebeae5;
+  --accent: #d85b3f;
+  --accent-soft: #f7e6e1;
+  --accent-ink: #a23d28;
+  --success: #48835c;
+  --shadow: 0 18px 60px rgba(31, 30, 27, .13), 0 2px 8px rgba(31, 30, 27, .06);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --app-bg: #1b1b19;
+  --surface: #222220;
+  --surface-solid: #282826;
+  --surface-soft: #2c2c29;
+  --surface-hover: #343431;
+  --ink: #eeede8;
+  --ink-soft: #b0afa8;
+  --ink-faint: #a3a29a;
+  --line: #3d3c38;
+  --line-soft: #31312e;
+  --accent: #ed8065;
+  --accent-soft: #402a25;
+  --accent-ink: #f19a84;
+  --success: #73b589;
+  --shadow: 0 18px 60px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .22);
+  color-scheme: dark;
+}

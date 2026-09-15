@@ -1,0 +1,248 @@
+import type { PaperSize, PdfTemplateId } from '../../shared/settings/exportSettings'
+
+import type { PdfFontFamily } from './fonts'
+
+export interface PdfTemplate {
+  id: PdfTemplateId
+  label: string
+  detail: string
+  /** One-line differentiator shown under the template name. */
+  look: string
+  font: PdfFontFamily
+  paper: PaperSize
+  margin: number
+  accent: string
+  background: string
+  body: string
+  heading: string
+  muted: string
+  rule: string
+  bodySize: number
+  h1: number
+  h2: number
+  h3: number
+  lineHeight: number
+  paragraphGap: number
+  firstLineIndent: number
+  h1Align: 'left' | 'center'
+  h2Style: 'plain' | 'uppercase' | 'rule'
+  chrome: 'plain' | 'bar' | 'letterhead' | 'folio'
+  pageNumber: 'none' | 'center' | 'right'
+}
+
+export const PDF_TEMPLATES: PdfTemplate[] = [
+  {
+    id: 'novel',
+    label: 'Novel',
+    detail: 'Book-style long reads',
+    look: 'Warm paper · indented paragraphs · no top bar',
+    font: 'serif',
+    paper: 'a4',
+    margin: 76,
+    accent: '#8f4232',
+    background: '#f7f3ea',
+    body: '#2c261e',
+    heading: '#1c1814',
+    muted: '#6f675c',
+    rule: '#d8d0c3',
+    bodySize: 11,
+    h1: 22,
+    h2: 14.5,
+    h3: 12,
+    lineHeight: 1.72,
+    paragraphGap: 8,
+    firstLineIndent: 14,
+    h1Align: 'left',
+    h2Style: 'plain',
+    chrome: 'plain',
+    pageNumber: 'center',
+  },
+  {
+    id: 'brief',
+    label: 'Brief',
+    detail: 'One-page business summary',
+    look: 'Blue top bar · uppercase headings · right page number',
+    font: 'sans',
+    paper: 'a4',
+    margin: 56,
+    accent: '#2c5f8a',
+    background: '#ffffff',
+    body: '#22262c',
+    heading: '#141820',
+    muted: '#5c6570',
+    rule: '#d5dbe2',
+    bodySize: 10.5,
+    h1: 20,
+    h2: 12,
+    h3: 11,
+    lineHeight: 1.42,
+    paragraphGap: 7,
+    firstLineIndent: 0,
+    h1Align: 'left',
+    h2Style: 'uppercase',
+    chrome: 'bar',
+    pageNumber: 'right',
+  },
+  {
+    id: 'thesis',
+    label: 'Thesis',
+    detail: 'Centered title, formal body',
+    look: 'Centered H1 · deep indent · centered folio',
+    font: 'serif',
+    paper: 'a4',
+    margin: 72,
+    accent: '#243b5a',
+    background: '#ffffff',
+    body: '#1a1c1f',
+    heading: '#111214',
+    muted: '#5a616a',
+    rule: '#9aa3ad',
+    bodySize: 11,
+    h1: 18,
+    h2: 13,
+    h3: 11.5,
+    lineHeight: 1.64,
+    paragraphGap: 8,
+    firstLineIndent: 16,
+    h1Align: 'center',
+    h2Style: 'plain',
+    chrome: 'plain',
+    pageNumber: 'center',
+  },
+  {
+    id: 'memo',
+    label: 'Memo',
+    detail: 'Short internal note',
+    look: 'Orange bar · compact type · no page numbers',
+    font: 'sans',
+    paper: 'a4',
+    margin: 48,
+    accent: '#c45c26',
+    background: '#ffffff',
+    body: '#1f1f1f',
+    heading: '#161616',
+    muted: '#666666',
+    rule: '#dddddd',
+    bodySize: 10,
+    h1: 16,
+    h2: 11,
+    h3: 10.5,
+    lineHeight: 1.38,
+    paragraphGap: 6,
+    firstLineIndent: 0,
+    h1Align: 'left',
+    h2Style: 'uppercase',
+    chrome: 'bar',
+    pageNumber: 'none',
+  },
+  {
+    id: 'field-notes',
+    label: 'Field Notes',
+    detail: 'Typewritten drafts',
+    look: 'Cream paper · monospace body · no chrome',
+    font: 'mono',
+    paper: 'a4',
+    margin: 62,
+    accent: '#6b5344',
+    background: '#fff8ee',
+    body: '#3a3228',
+    heading: '#2a241c',
+    muted: '#7a7066',
+    rule: '#e2d6c8',
+    bodySize: 10,
+    h1: 16,
+    h2: 12,
+    h3: 11,
+    lineHeight: 1.52,
+    paragraphGap: 7,
+    firstLineIndent: 0,
+    h1Align: 'left',
+    h2Style: 'plain',
+    chrome: 'plain',
+    pageNumber: 'none',
+  },
+  {
+    id: 'letter',
+    label: 'Letter',
+    detail: 'Correspondence on US Letter',
+    look: 'Letterhead rules · generous margins · US Letter',
+    font: 'serif',
+    paper: 'letter',
+    margin: 80,
+    accent: '#5c4a3a',
+    background: '#ffffff',
+    body: '#1f1c18',
+    heading: '#1a1714',
+    muted: '#6a625a',
+    rule: '#d8d2cb',
+    bodySize: 11,
+    h1: 17,
+    h2: 13,
+    h3: 11.5,
+    lineHeight: 1.66,
+    paragraphGap: 10,
+    firstLineIndent: 0,
+    h1Align: 'left',
+    h2Style: 'plain',
+    chrome: 'letterhead',
+    pageNumber: 'none',
+  },
+  {
+    id: 'technical',
+    label: 'Technical',
+    detail: 'Specs with ruled headings',
+    look: 'Grey-blue paper · ruled H2 · right folio',
+    font: 'sans',
+    paper: 'a4',
+    margin: 54,
+    accent: '#3d6ea8',
+    background: '#f7f8fa',
+    body: '#12141a',
+    heading: '#0e1016',
+    muted: '#5b6370',
+    rule: '#d0d5de',
+    bodySize: 10,
+    h1: 18,
+    h2: 12.5,
+    h3: 11,
+    lineHeight: 1.4,
+    paragraphGap: 6,
+    firstLineIndent: 0,
+    h1Align: 'left',
+    h2Style: 'rule',
+    chrome: 'bar',
+    pageNumber: 'right',
+  },
+  {
+    id: 'magazine',
+    label: 'Magazine',
+    detail: 'Large display feature type',
+    look: 'Folio rules top+bottom · biggest H1 · ruled H2',
+    font: 'serif',
+    paper: 'a4',
+    margin: 74,
+    accent: '#7a2e2e',
+    background: '#fbf6ef',
+    body: '#241c16',
+    heading: '#1a140f',
+    muted: '#74685c',
+    rule: '#e2d5c6',
+    bodySize: 11.5,
+    h1: 24,
+    h2: 15,
+    h3: 12.5,
+    lineHeight: 1.76,
+    paragraphGap: 9,
+    firstLineIndent: 12,
+    h1Align: 'left',
+    h2Style: 'rule',
+    chrome: 'folio',
+    pageNumber: 'center',
+  },
+]
+
+export const PDF_TEMPLATE_IDS = PDF_TEMPLATES.map((template) => template.id)
+
+export function getPdfTemplate(id: string | undefined): PdfTemplate {
+  return PDF_TEMPLATES.find((template) => template.id === id) ?? PDF_TEMPLATES[0]
+}

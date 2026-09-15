@@ -1,5 +1,8 @@
 import { execSync } from 'node:child_process'
+
 import react from '@vitejs/plugin-react'
+import MarkdownIt from 'markdown-it'
+import taskLists from 'markdown-it-task-lists'
 import { defineConfig, type Plugin } from 'vite'
 
 // Deployment fingerprint for CI/CD verification. Vercel builds run inside
@@ -18,9 +21,7 @@ function resolveBuildSha(): string {
 
 // Rendered once at config-load time. markdown-it is CommonJS; the default
 // interop import works both in the bundled dev config and the production build.
-import MarkdownIt from 'markdown-it'
-import taskLists from 'markdown-it-task-lists'
-import { starterMarkdown } from './src/lib/starter.ts'
+import { starterMarkdown } from './src/shared/lib/starter.ts'
 
 function resolveSiteUrl() {
   const configured = process.env.VITE_SITE_URL

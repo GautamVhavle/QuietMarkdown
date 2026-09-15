@@ -58,8 +58,8 @@ test('ships valid JSON-LD with SoftwareApplication and FAQPage graphs', () => {
   expect(blocks.length).toBeGreaterThan(0)
 
   const parsed = blocks.map((block) => {
-    const data = JSON.parse(block[1]) as { '@graph'?: Array<{ '@type': string }> }
-    return data['@graph'] ?? [data]
+    const data = JSON.parse(block[1]) as { '@graph'?: Array<{ '@type': string }>; '@type'?: string }
+    return data['@graph'] ?? [{ '@type': data['@type'] ?? '' }]
   })
 
   const types = parsed.flat().map((node) => node['@type'])

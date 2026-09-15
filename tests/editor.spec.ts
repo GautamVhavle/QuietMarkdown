@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
