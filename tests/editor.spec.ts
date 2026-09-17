@@ -223,6 +223,9 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.getByLabel('Choose body font, currently Newsreader')).toBeVisible()
 
   await page.getByRole('tab', { name: 'PDF' }).click()
+  // Watermark is off by default; the text field appears after enabling it.
+  await expect(page.getByText('Watermark is off. Turn it on to stamp every page.')).toBeVisible()
+  await page.getByRole('switch', { name: 'Toggle watermark' }).click()
   const watermark = page.getByPlaceholder('DRAFT, CONFIDENTIAL…')
   await expect(watermark).toHaveValue('quietmarkdown.vercel.app')
   await watermark.fill('CONFIDENTIAL')

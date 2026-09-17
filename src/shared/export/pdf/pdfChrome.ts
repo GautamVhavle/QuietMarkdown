@@ -1,10 +1,10 @@
 // Page chrome: template top rules, watermark text, and page numbers.
-import { degrees, type PDFFont, type PDFPage } from 'pdf-lib'
+import { degrees, type PDFPage } from 'pdf-lib'
 
 import type { PdfTemplate } from '../../lib/pdf-templates'
 import type { ExportSettings } from '../../settings/exportSettings'
 
-import { pdfEncode, hexRgb } from './pdfEncode'
+import { encodeFor, hexRgb } from './pdfEncode'
 import type { FontSet } from './pdfFonts'
 
 export function drawChrome(
@@ -58,13 +58,14 @@ export function drawChrome(
 export function drawWatermark(
   page: PDFPage,
   settings: ExportSettings,
-  font: PDFFont,
+  fonts: FontSet,
   pageWidth: number,
   pageHeight: number,
 ) {
   const watermark = settings.watermark
   if (!watermark.enabled || !watermark.text.trim()) return
-  const text = pdfEncode(watermark.text.trim()) || 'WATERMARK'
+  const font = fonts.bold
+  const text = encodeFor(fonts, watermark.text.trim()) || 'WATERMARK'
   let size = watermark.size * 0.75
   let textWidth = font.widthOfTextAtSize(text, size)
   const maxWidth = pageWidth * 0.82

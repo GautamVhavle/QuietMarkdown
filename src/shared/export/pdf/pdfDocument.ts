@@ -43,10 +43,11 @@ export async function createMarkdownPdf(
     accent: hexRgb(tune.linkColor),
     background: hexRgb(recipe.background),
   }
-  const fonts = await loadFonts(pdf, getExportFont(tune.bodyFont).pdf)
+  const bodyDef = getExportFont(tune.bodyFont)
+  const headingDef = getExportFont(tune.headingFont)
+  const fonts = await loadFonts(pdf, bodyDef, headingDef)
   const bodySize = recipe.bodySize
   const lineHeight = recipe.lineHeight
-  const watermarkFont = fonts.bold
 
   let page: PDFPage
   let cursor = margin
@@ -98,7 +99,7 @@ export async function createMarkdownPdf(
   if (pdf.getPageCount() === 0) addPage()
   const pages = pdf.getPages()
   pages.forEach((pdfPage, index) => {
-    drawWatermark(pdfPage, settings, watermarkFont, size.width, size.height)
+    drawWatermark(pdfPage, settings, fonts, size.width, size.height)
     if (!tune.pageNumbers || recipe.pageNumber === 'none') return
     drawPageNumber(pdfPage, recipe, fonts, colors, size, margin, index)
   })

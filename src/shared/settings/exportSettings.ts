@@ -89,7 +89,7 @@ export const defaultExportSettings: ExportSettings = {
   accent: '#d85b3f',
   background: '#ffffff',
   watermark: {
-    enabled: true,
+    enabled: false,
     text: 'quietmarkdown.vercel.app',
     position: 'bottom-right',
     opacity: 0.1,

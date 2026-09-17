@@ -5,7 +5,7 @@ import { rgb, type PDFDocument, type PDFPage, type RGB } from 'pdf-lib'
 
 import type { PdfTemplate } from '../../lib/pdf-templates'
 
-import { embedImage, pdfEncode } from './pdfEncode'
+import { embedImage, encodeFor } from './pdfEncode'
 import type { FontSet } from './pdfFonts'
 import { fontFor, inlineRuns, measure, wrapRuns, type Run } from './pdfText'
 
@@ -56,7 +56,7 @@ function drawRunsLineOn(ctx: BlockContext, runs: Run[], x: number, fontSize: num
   const target = ctx.page()
   let left = x
   for (const run of runs) {
-    const text = pdfEncode(run.text)
+    const text = encodeFor(ctx.fonts, run.text)
     if (!text) continue
     const font = fontFor(ctx.fonts, run)
     const paint = run.link ? ctx.colors.accent : run.code ? ctx.colors.heading : color
@@ -133,12 +133,12 @@ export async function drawList(ctx: BlockContext, list: HTMLElement, ordered: bo
     const clone = item.cloneNode(true) as HTMLElement
     clone.querySelectorAll('ul, ol, input').forEach((node) => node.remove())
     const runs = inlineRuns(clone)
-    const lines = wrapRuns(runs.length ? runs : [{ text: item.textContent?.trim() ?? '', bold: false, italic: false, code: false, link: false }], ctx.fonts, ctx.bodySize, ctx.contentWidth - indent - markerWidth)
+    const lines = wrapRuns(runs.length ? runs : [{ text: item.textContent?.trim() ?? '', bold: false, italic: false, code: false, link: false, heading: false }], ctx.fonts, ctx.bodySize, ctx.contentWidth - indent - markerWidth)
     const skip = ctx.bodySize * ctx.lineHeight
     ctx.ensure(skip * Math.max(1, Math.min(lines.length, 2)))
     const markerX = ctx.margin + indent
     const target = ctx.page()
-    target.drawText(pdfEncode(marker), {
+    target.drawText(encodeFor(ctx.fonts, marker), {
       x: markerX,
       y: ctx.baseline(ctx.cursor(), ctx.bodySize),
       size: ctx.bodySize,
@@ -168,7 +168,7 @@ export function drawTable(ctx: BlockContext, table: HTMLElement) {
   const wrapped = grid.map((row) =>
     Array.from({ length: columns }, (_, column) =>
       wrapRuns(
-        [{ text: row[column] ?? '', bold: false, italic: false, code: false, link: false }],
+        [{ text: row[column] ?? '', bold: false, italic: false, code: false, link: false, heading: false }],
         ctx.fonts,
         cellSize,
         colWidth - cellPad * 2,
@@ -209,7 +209,7 @@ export function drawTable(ctx: BlockContext, table: HTMLElement) {
       const textColor = rowIndex === 0 ? ctx.colors.heading : ctx.colors.body
       const font = rowIndex === 0 ? ctx.fonts.bold : ctx.fonts.body
       cell.forEach((line) => {
-        const text = pdfEncode(line.map((run) => run.text).join(''))
+        const text = encodeFor(ctx.fonts, line.map((run) => run.text).join(''))
         target.drawText(text, {
           x: ctx.margin + column * colWidth + cellPad,
           y: ctx.baseline(y, cellSize),
@@ -232,7 +232,7 @@ export function drawTable(ctx: BlockContext, table: HTMLElement) {
 }
 
 export function drawPre(ctx: BlockContext, pre: HTMLElement) {
-  const code = pdfEncode(pre.textContent?.replace(/\n$/, '') ?? '')
+  const code = encodeFor(ctx.fonts, pre.textContent?.replace(/\n$/, '') ?? '')
   const fontSize = 8.5
   const skip = fontSize * 1.4
   const tint = rgb(
@@ -241,7 +241,7 @@ export function drawPre(ctx: BlockContext, pre: HTMLElement) {
     ctx.colors.body.blue * 0.06 + ctx.colors.background.blue * 0.94,
   )
   const lines = code.split('\n').flatMap((line) => {
-    const run: Run = { text: line || ' ', bold: false, italic: false, code: true, link: false }
+    const run: Run = { text: line || ' ', bold: false, italic: false, code: true, link: false, heading: false }
     return wrapRuns([run], ctx.fonts, fontSize, ctx.contentWidth - 16).map((wrapped) => wrapped.map((part) => part.text).join(''))
   })
   const target = ctx.page() as unknown as {
@@ -276,7 +276,7 @@ export async function drawBlock(ctx: BlockContext, element: HTMLElement) {
     const fontSize = sizes[tag as keyof typeof sizes]
     const levelColor = tag === 'H1' ? ctx.colors.h1 : tag === 'H2' ? ctx.colors.h2 : tag === 'H3' ? ctx.colors.h3 : ctx.colors.heading
     ctx.advance(tag === 'H1' ? 4 : 10)
-    let runs = inlineRuns(element).map((run) => ({ ...run, bold: true }))
+    let runs = inlineRuns(element).map((run) => ({ ...run, bold: true, heading: true }))
     if (tag === 'H2' && ctx.recipe.h2Style === 'uppercase') {
       runs = runs.map((run) => ({ ...run, text: run.text.toUpperCase() }))
     }

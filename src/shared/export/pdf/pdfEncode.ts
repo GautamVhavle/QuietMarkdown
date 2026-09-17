@@ -1,7 +1,11 @@
 // WinAnsi text encoding for pdf-lib's standard fonts, plus image embedding.
 // Standard PDF fonts only encode WinAnsi: map punctuation, drop the rest.
+// Embedded TTF subsets (see pdfFontFetch) accept full Unicode, so callers
+// use encodeFor(fonts, text) to pick per active font set.
 import type { PDFDocument} from 'pdf-lib';
 import { rgb, type PDFImage, type RGB } from 'pdf-lib'
+
+import type { FontSet } from './pdfFonts'
 
 const CHAR_MAP: Record<string, string> = {
   '\u2018': "'",
@@ -41,6 +45,13 @@ export function pdfEncode(text: string): string {
     }
   }
   return output
+}
+
+/** Encode text for the active font set. Embedded TTF subsets render full
+ * Unicode (tabs still expand); standard-font fallback needs WinAnsi. */
+export function encodeFor(fonts: FontSet, text: string): string {
+  if (fonts.unicode) return text.replaceAll('\t', '  ')
+  return pdfEncode(text)
 }
 
 export function hexRgb(hex: string): RGB {

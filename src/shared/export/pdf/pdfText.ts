@@ -1,8 +1,9 @@
-// Inline runs: HTML → styled runs → wrapped lines. Uses the browser's own
+// Inline runs: HTML → styled runs → wrapped lines. Uses the embedded
 // font metrics via pdf-lib, so a split never lands inside a glyph.
+// Headings use the heading faces; body text uses the body faces.
 import type { PDFFont } from 'pdf-lib'
 
-import { pdfEncode } from './pdfEncode'
+import { encodeFor } from './pdfEncode'
 import type { FontSet } from './pdfFonts'
 
 export interface Run {
@@ -11,10 +12,17 @@ export interface Run {
   italic: boolean
   code: boolean
   link: boolean
+  heading?: boolean
 }
 
 export function fontFor(fonts: FontSet, run: Run): PDFFont {
   if (run.code) return run.bold ? fonts.monoBold : fonts.mono
+  if (run.heading) {
+    if (run.bold && run.italic) return fonts.headingBoldItalic
+    if (run.bold) return fonts.headingBold
+    if (run.italic) return fonts.headingItalic
+    return fonts.heading
+  }
   if (run.bold && run.italic) return fonts.boldItalic
   if (run.bold) return fonts.bold
   if (run.italic) return fonts.italic
@@ -22,7 +30,7 @@ export function fontFor(fonts: FontSet, run: Run): PDFFont {
 }
 
 export function measure(fonts: FontSet, run: Run, size: number): number {
-  const text = pdfEncode(run.text)
+  const text = encodeFor(fonts, run.text)
   if (!text) return 0
   return fontFor(fonts, run).widthOfTextAtSize(text, size)
 }
@@ -73,12 +81,12 @@ export function wrapRuns(runs: Run[], fonts: FontSet, size: number, maxWidth: nu
         continue
       }
       const font = fontFor(fonts, run)
-      const encoded = pdfEncode(piece)
+      const encoded = encodeFor(fonts, piece)
       if (encoded && font.widthOfTextAtSize(encoded, size) > maxWidth && !/^\s+$/.test(piece)) {
         let chunk = ''
         for (const char of piece) {
           const next = chunk + char
-          if (chunk && font.widthOfTextAtSize(pdfEncode(next), size) > maxWidth) {
+          if (chunk && font.widthOfTextAtSize(encodeFor(fonts, next), size) > maxWidth) {
             pushRun({ ...run, text: chunk })
             commit()
             chunk = char
@@ -123,6 +131,6 @@ export function inlineRuns(node: Node): Run[] {
     if (tag === 'A') next.link = true
     current.childNodes.forEach((child) => walk(child, next))
   }
-  walk(node, { bold: false, italic: false, code: false, link: false })
+  walk(node, { bold: false, italic: false, code: false, link: false, heading: false })
   return runs
 }
