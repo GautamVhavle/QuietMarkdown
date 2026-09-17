@@ -17,7 +17,6 @@ import type { ExportSettings, FineTuneSettings, PdfTemplateId, WatermarkPosition
 import { ExportPage } from './ExportPage'
 import { FineTunePanel } from './FineTunePanel'
 import { PdfPngPages } from './PdfPngPages'
-import { PdfPreview } from './PdfPreview'
 
 interface ExportStudioProps {
   open: boolean
@@ -559,7 +558,7 @@ export function ExportStudio({
             </div>
             <div className="export-preview-viewport">
               {exportTab === 'pdf' && (
-                <PdfPreview rendered={rendered} settings={settings} template={pdfTemplate} />
+                <PdfPngPages rendered={rendered} settings={settings} />
               )}
               {exportTab === 'html' && (
                 <div

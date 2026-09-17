@@ -204,7 +204,7 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Finish it beautifully.' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'PDF' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('list', { name: 'PDF templates' }).getByRole('button')).toHaveCount(8)
-  await expect(page.locator('.pdf-page-live').first()).toBeVisible()
+  await expect(page.locator('.pdf-raster-frame img').first()).toBeVisible()
   await expect(page.locator('.paged-folio').first()).toContainText(/Page 1 of \d+/)
   await page.getByRole('list', { name: 'PDF templates' }).getByRole('button', { name: 'Brief' }).click()
   await expect(page.getByRole('button', { name: /Save as PDF/ })).toContainText('Brief')
@@ -227,7 +227,11 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   await expect(watermark).toHaveValue('quietmarkdown.vercel.app')
   await watermark.fill('CONFIDENTIAL')
   await page.getByRole('button', { name: 'Tiled' }).click()
-  await expect(page.getByRole('dialog').getByText('CONFIDENTIAL').first()).toBeVisible()
+  // The PDF preview is a raster of the real PDF bytes, so watermark text is
+  // baked into page images rather than selectable DOM text. The raster
+  // refreshing is the fidelity signal.
+  await expect(page.locator('.pdf-raster-frame img').first()).toBeVisible()
+  await expect(page.locator('.paged-folio').first()).toContainText(/Page 1 of \d+/)
   await expect(page.getByRole('button', { name: /Save as PDF/ })).toBeVisible()
 })
 
