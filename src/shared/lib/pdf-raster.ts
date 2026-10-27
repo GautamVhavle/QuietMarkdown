@@ -28,7 +28,7 @@ export async function renderPdfToPngs(
   scale = 2,
   onProgress?: (done: number, total: number) => void,
 ): Promise<Blob[]> {
-  const bytes = await createMarkdownPdf(title, rendered, settings)
+  const { bytes } = await createMarkdownPdf(title, rendered, settings)
   if (bytes.byteLength < 8) throw new Error('PDF export produced no pages')
   const pdfjs = await loadPdfJs()
   const pdf = await pdfjs.getDocument({ data: bytes.slice().buffer as ArrayBuffer }).promise
@@ -58,7 +58,7 @@ export async function renderPdfPreviewUrls(
   settings: ExportSettings,
   signal?: { cancelled: boolean },
 ): Promise<Array<{ url: string; width: number; height: number }>> {
-  const bytes = await createMarkdownPdf('preview', rendered, settings)
+  const { bytes } = await createMarkdownPdf('preview', rendered, settings)
   const pdfjs = await loadPdfJs()
   const pdf = await pdfjs.getDocument({ data: bytes.slice().buffer as ArrayBuffer }).promise
   const images: Array<{ url: string; width: number; height: number }> = []

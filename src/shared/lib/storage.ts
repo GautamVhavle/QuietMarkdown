@@ -19,6 +19,10 @@ const isQuotaError = (error: unknown): boolean => {
   )
 }
 
+export function storageFailureFrom(error: unknown): 'quota' | 'blocked' {
+  return isQuotaError(error) ? 'quota' : 'blocked'
+}
+
 export function readStorageJson<T>(key: string): { value: T | null; corrupted: boolean } {
   try {
     const raw = localStorage.getItem(key)

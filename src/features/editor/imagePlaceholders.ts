@@ -2,7 +2,7 @@
 // placeholder per image line; state, preview, and exports keep the full
 // data URL. Placeholders round-trip by position: survivors restore their
 // URL, deleted ones stay deleted, user-typed ones stay as typed.
-export const IMAGE_URL_PATTERN = /!\[[^\]]*\]\((data:image\/[^)\s]+|blob:[^)\s]+)\)/g
+export const IMAGE_URL_PATTERN = /!\[[^\]]*\]\((data:image\/[^)\s]+|blob:[^)\s]+|qm-image:[^)\s]+)\)/g
 export const COLLAPSED_PATTERN = /!\[[^\]]*\]\(embedded:image\)/g
 
 // Collapse pasted-image data URLs to a short placeholder for display only.

@@ -1,12 +1,14 @@
 // Export studio dialog: PDF/HTML/PNG tabs, fine-tune controls, live
 // preview, and download actions. Moved verbatim from App.tsx.
-import { Check, CodeXml, FileDown, ImageDown, ShieldCheck, Sparkles, X } from 'lucide-react'
+import { Check, CodeXml, FileDown, ImageDown, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 
 import { getExportStyle } from '../../shared/export/exportCss'
 import { createExportHtml } from '../../shared/export/exportHtml'
 import { orientedDimensions, tuneMarginPx } from '../../shared/export/geometry'
 import { createMarkdownPdf } from '../../shared/export/pdf/pdfDocument'
+import { classifyPdfError } from '../../shared/export/pdf/pdfFailure'
+import { createPlainTextPdf } from '../../shared/export/pdf/pdfPlain'
 import { downloadBlob } from '../../shared/lib/download'
 import { smartFilename } from '../../shared/lib/filenames'
 import { ensureExportFont } from '../../shared/lib/fonts'
@@ -144,28 +146,48 @@ export function ExportStudio({
         `${smartFilename(markdown, title)}.html`,
         'text/html;charset=utf-8',
       )
-      onToast('HTML file downloaded without watermark')
+      onToast('HTML downloaded.')
     } catch {
       onToast('Could not prepare the HTML export')
     }
   }
 
+  const savePdf = (bytes: Uint8Array) => {
+    const pdfBytes = new Uint8Array(bytes.byteLength)
+    pdfBytes.set(bytes)
+    downloadBlob(pdfBytes.buffer, `${smartFilename(markdown, title)}.pdf`, 'application/pdf')
+  }
+
   const exportPdf = async () => {
     setExporting('pdf')
     try {
-      const bytes = await createMarkdownPdf(title, rendered, settings)
-      if (bytes.byteLength < 8) throw new Error('PDF export produced no pages')
-      const pdfBytes = new Uint8Array(bytes.byteLength)
-      pdfBytes.set(bytes)
-      downloadBlob(pdfBytes.buffer, `${smartFilename(markdown, title)}.pdf`, 'application/pdf')
-      onToast(
-        settings.watermark.enabled && settings.watermark.text.trim()
-          ? 'PDF downloaded as a real document with a watermark on every page'
-          : 'PDF downloaded as a real document',
-      )
+      let bytes: Uint8Array
+      let fontFallback: string | null = null
+      let failure: ReturnType<typeof classifyPdfError> | null = null
+      try {
+        const result = await createMarkdownPdf(title, rendered, settings)
+        if (result.bytes.byteLength < 8) throw new Error('PDF export produced no pages')
+        bytes = result.bytes
+        fontFallback = result.fontFallback
+      } catch (error) {
+        failure = classifyPdfError(error)
+        console.error('PDF export failed', error)
+        bytes = await createPlainTextPdf(title, markdown)
+      }
+      savePdf(bytes)
+      if (fontFallback) onToast(`Font didn’t load, so this file uses ${fontFallback}.`)
+      else if (failure === 'memory') onToast('This note is too large to rasterize; the PDF is ready.')
+      else if (failure === 'empty') onToast('This note has nothing to put on a page. PDF downloaded.')
+      else if (failure === 'font') onToast('Font didn’t load, so this file uses Georgia. PDF downloaded.')
+      else if (failure) onToast('The typesetter failed, so this file is a plain PDF. PDF downloaded.')
+      else onToast('PDF downloaded.')
     } catch (error) {
       console.error('PDF export failed', error)
-      onToast('This document could not be rendered as a PDF')
+      const failure = classifyPdfError(error)
+      if (failure === 'memory') onToast('This note is too large to rasterize.')
+      else if (failure === 'empty') onToast('This note has nothing to put on a page.')
+      else if (failure === 'font') onToast('Font didn’t load, so this file uses Georgia.')
+      else onToast('This note could not be rendered as a PDF.')
     } finally {
       setExporting(null)
     }
@@ -183,7 +205,7 @@ export function ExportStudio({
       if (blobs.length === 0) throw new Error('PNG export produced no pages')
       if (blobs.length === 1) {
         downloadBlob(blobs[0], `${filename}.png`, 'image/png')
-        onToast('High-resolution PNG page downloaded')
+        onToast('PNG downloaded.')
         return
       }
 
@@ -194,10 +216,22 @@ export function ExportStudio({
       })
       const zip = await archive.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
       downloadBlob(zip, `${filename}-png-pages.zip`, 'application/zip')
-      onToast(`${blobs.length} high-resolution PNG pages downloaded as ZIP`)
+      onToast('PNG downloaded.')
     } catch (error) {
       console.error('PNG export failed', error)
-      onToast('This document could not be rendered as PNG pages')
+      const failure = classifyPdfError(error)
+      if (failure === 'memory') {
+        try {
+          savePdf(await createPlainTextPdf(title, markdown))
+          onToast('This note is too large to rasterize; the PDF is ready.')
+          return
+        } catch (plainError) {
+          console.error('Plain PDF fallback failed', plainError)
+        }
+      }
+      onToast(failure === 'memory'
+        ? 'This note is too large to rasterize.'
+        : 'This note could not be rendered as PNG pages.')
     } finally {
       setExporting(null)
     }
@@ -223,11 +257,10 @@ export function ExportStudio({
     { value: 'bottom-right', label: 'Bottom right' },
   ]
 
-  const watermarkSection = (step: string) => (
+  const watermarkSection = (
     <section className="control-section watermark-section" aria-label="Watermark options">
       <div className="section-heading">
         <div className="section-title">
-          <span className="step-badge" aria-hidden="true">{step}</span>
           <div>
             <h3>Watermark</h3>
             <p>{exportTab === 'pdf' ? 'Printed as real PDF text' : 'Drawn on PNG pages only'}</p>
@@ -345,8 +378,7 @@ export function ExportStudio({
       >
         <header className="export-header">
           <div>
-            <span className="eyebrow"><Sparkles size={13} /> Export studio</span>
-            <h2 id="export-title">Finish it beautifully.</h2>
+            <h2 id="export-title">Export</h2>
           </div>
           <button
             className="icon-button"
@@ -396,7 +428,6 @@ export function ExportStudio({
               <section className="control-section">
                 <div className="section-heading">
                   <div className="section-title">
-                    <span className="step-badge" aria-hidden="true">1</span>
                     <div>
                       <h3>Template</h3>
                       <p>A real typeset PDF, separate from the HTML page</p>
@@ -450,14 +481,13 @@ export function ExportStudio({
                 </div>
               </section>
               <FineTunePanel
-                step="2"
                 title="Fine-tune"
                 subtitle="Fonts, colours, and page layout for this PDF"
                 tune={tune}
                 onChange={updateFineTune}
                 hint="Switching templates resets colours and paper. Adjust them after picking."
               />
-              {watermarkSection('3')}
+              {watermarkSection}
               </div>
             )}
 
@@ -466,7 +496,6 @@ export function ExportStudio({
               <section className="control-section">
                 <div className="section-heading">
                   <div className="section-title">
-                    <span className="step-badge" aria-hidden="true">1</span>
                     <div>
                       <h3>Page style</h3>
                       <p>Shared by the HTML file and PNG pages</p>
@@ -503,7 +532,6 @@ export function ExportStudio({
                 </div>
               </section>
               <FineTunePanel
-                step="2"
                 title="Fine-tune"
                 subtitle="Fonts, colours, and page layout for this page"
                 tune={tune}
@@ -519,7 +547,6 @@ export function ExportStudio({
               <section className="control-section">
                 <div className="section-heading">
                   <div className="section-title">
-                    <span className="step-badge" aria-hidden="true">1</span>
                     <div>
                       <h3>Page images</h3>
                       <p>Pictures of the PDF. Same pages, same splits.</p>
@@ -531,14 +558,13 @@ export function ExportStudio({
                 </p>
               </section>
               <FineTunePanel
-                step="2"
                 title="Fine-tune"
                 subtitle="Same controls as the PDF tab"
                 tune={tune}
                 onChange={updateFineTune}
                 hint="PNG pages always match the PDF download exactly."
               />
-              {watermarkSection('3')}
+              {watermarkSection}
               </div>
             )}
           </div>
@@ -594,12 +620,12 @@ export function ExportStudio({
             )}
             {exportTab === 'png' && (
               <button type="button" className="export-action primary" onClick={() => void exportPng()} disabled={exporting !== null}>
-                <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Rendering pages…' : 'PNG pages'}</strong><small>Pictures of the PDF pages</small></span>
+                <ImageDown size={17} /><span><strong>{exporting === 'png' ? 'Downloading PNG…' : 'Download PNG'}</strong><small>Pictures of the PDF pages</small></span>
               </button>
             )}
             {exportTab === 'pdf' && (
               <button type="button" className="export-action primary" onClick={() => void exportPdf()} disabled={exporting !== null}>
-                <FileDown size={17} /><span><strong>{exporting === 'pdf' ? 'Creating PDF…' : 'Save as PDF'}</strong><small>{pdfTemplate.label} template</small></span>
+                <FileDown size={17} /><span><strong>{exporting === 'pdf' ? 'Downloading PDF…' : 'Download PDF'}</strong><small>{pdfTemplate.label} template</small></span>
               </button>
             )}
           </div>

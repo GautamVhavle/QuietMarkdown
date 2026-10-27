@@ -4,6 +4,9 @@
 import type { RefObject } from 'react'
 
 import { collapseImageUrls, mapDisplayCaretToReal } from '../editor/imagePlaceholders'
+import { imageIdFor } from '../library/imageRefs'
+import { putImage } from '../library/imageStore'
+import { saveFailureMessage } from '../shell/saveCopy'
 
 export function useImageEmbed(
   markdown: string,
@@ -90,8 +93,14 @@ export function useImageEmbed(
         onToast('Image is too large to embed locally')
         return
       }
+      const id = imageIdFor(dataUrl)
+      const stored = await putImage(id, dataUrl)
+      if (!stored.ok) {
+        onToast(saveFailureMessage(stored.error === 'serialize' ? 'corrupt' : stored.error))
+        return
+      }
       const name = file.name && !file.name.startsWith('blob') ? file.name.replace(/\.[a-z0-9]+$/i, '') : 'embedded image'
-      insertIntoEditor(`![${name}](${dataUrl})`)
+      insertIntoEditor(`![${name}](qm-image:${id})`)
       onToast('Image embedded in the document')
     } catch {
       onToast('This image could not be embedded')

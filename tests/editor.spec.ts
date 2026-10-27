@@ -152,7 +152,7 @@ test('downloads clean HTML and a real PDF file', async ({ page }, testInfo) => {
 
   await page.getByRole('tab', { name: 'PDF' }).click()
   const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
-  await page.getByRole('button', { name: /Save as PDF/ }).click()
+  await page.getByRole('button', { name: /Download PDF/ }).click()
   const pdfDownload = await pdfDownloadPromise
   const pdfPath = testInfo.outputPath('quietmarkdown-export.pdf')
   await pdfDownload.saveAs(pdfPath)
@@ -201,13 +201,13 @@ test('switches theme and customizes export watermark', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Export' }).first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Finish it beautifully.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Export' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'PDF' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('list', { name: 'PDF templates' }).getByRole('button')).toHaveCount(8)
   await expect(page.locator('.pdf-raster-frame img').first()).toBeVisible()
   await expect(page.locator('.paged-folio').first()).toContainText(/Page 1 of \d+/)
   await page.getByRole('list', { name: 'PDF templates' }).getByRole('button', { name: 'Brief' }).click()
-  await expect(page.getByRole('button', { name: /Save as PDF/ })).toContainText('Brief')
+  await expect(page.getByRole('button', { name: /Download PDF/ })).toContainText('Brief')
 
   await page.getByRole('tab', { name: 'HTML' }).click()
   await page.getByRole('button', { name: 'Minimal' }).click()
@@ -235,7 +235,7 @@ test('switches theme and customizes export watermark', async ({ page }) => {
   // refreshing is the fidelity signal.
   await expect(page.locator('.pdf-raster-frame img').first()).toBeVisible()
   await expect(page.locator('.paged-folio').first()).toContainText(/Page 1 of \d+/)
-  await expect(page.getByRole('button', { name: /Save as PDF/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Download PDF/ })).toBeVisible()
 })
 
 test('creates, switches between, and deletes documents in the library', async ({ page }, testInfo) => {
@@ -394,4 +394,45 @@ test('clears the page from the documents menu with an undo safety net', async ({
   // Safety net: one undo brings the draft back.
   await editor.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z')
   await expect(editor).toHaveValue(/Draft to discard/)
+})
+
+test('downloads a PDF of a full note', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'File integrity is covered once on desktop.')
+  await page.getByLabel('Markdown content').fill([
+    '# Field notes',
+    '',
+    'A paragraph with enough words to typeset a real page.',
+    '',
+    '- First mark',
+    '- Second mark',
+    '',
+    '> The sheet is the only warm thing.',
+  ].join('\n'))
+  await page.getByRole('button', { name: 'Open export studio' }).click()
+  const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
+  await page.getByRole('button', { name: /Download PDF/ }).click()
+  const pdfDownload = await pdfDownloadPromise
+  const pdfPath = testInfo.outputPath('full-note.pdf')
+  await pdfDownload.saveAs(pdfPath)
+  const pdfBytes = await readFile(pdfPath)
+  const { PDFDocument } = await import('pdf-lib')
+  const pdf = await PDFDocument.load(pdfBytes)
+  expect(pdfBytes.subarray(0, 4).toString()).toBe('%PDF')
+  expect(pdf.getPageCount()).toBeGreaterThan(0)
+  await expect(page.getByRole('status')).toContainText('PDF downloaded.')
+})
+
+test('says when a font falls back and still downloads the PDF', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Font fallback is covered once on desktop.')
+  await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort())
+  await page.getByLabel('Markdown content').fill('# Offline type\n\nThe file should still download.\n')
+  await page.getByRole('button', { name: 'Open export studio' }).click()
+  const pdfDownloadPromise = page.waitForEvent('download', { timeout: 90_000 })
+  await page.getByRole('button', { name: /Download PDF/ }).click()
+  const pdfDownload = await pdfDownloadPromise
+  const pdfPath = testInfo.outputPath('font-fallback.pdf')
+  await pdfDownload.saveAs(pdfPath)
+  const pdfBytes = await readFile(pdfPath)
+  expect(pdfBytes.subarray(0, 4).toString()).toBe('%PDF')
+  await expect(page.getByRole('status')).toContainText(/Font didn.t load, so this file uses Georgia/)
 })

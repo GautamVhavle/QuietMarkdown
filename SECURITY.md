@@ -41,7 +41,7 @@ We credit reporters in the release notes by default; say so explicitly if you pr
 - **No backend.** Documents never leave the device except when you export or download them yourself.
 - **Sanitization.** All rendered HTML passes through DOMPurify before it touches the DOM. Export HTML receives the same treatment.
 - **Strict headers.** `vercel.json` sets `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy`, and frame protection.
-- **Least data.** No analytics, no telemetry, no error reporting service. Console errors stay in your console.
+- **Least data.** Vercel Web Analytics counts page views. It does not receive document text, filenames, or exports. There is no error reporting service. Console errors stay in your console.
 - **Service worker scope.** The offline worker caches only same-origin GET responses and never inspects or stores document text.
 
 Thank you for helping keep QuietMarkdown trustworthy.

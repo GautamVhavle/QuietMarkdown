@@ -2,6 +2,9 @@
 import { FileText } from 'lucide-react'
 
 import type { ToolbarItem } from '../formatting/toolbarConfig'
+import type { StorageFailure } from '../library/types'
+
+import { saveStatusText } from './saveCopy'
 
 interface DocumentBarProps {
   title: string
@@ -11,6 +14,8 @@ interface DocumentBarProps {
   words: number
   minutes: number
   saveState: 'saved' | 'saving' | 'error'
+  failure: StorageFailure | null
+  onDownload: () => void
 }
 
 export function DocumentBar({
@@ -21,6 +26,8 @@ export function DocumentBar({
   words,
   minutes,
   saveState,
+  failure,
+  onDownload,
 }: DocumentBarProps) {
   return (
     <div className="document-bar">
@@ -35,7 +42,6 @@ export function DocumentBar({
       </div>
 
       <div className="format-toolbar" aria-label="Markdown tools">
-        <span className="toolbar-label">Tools</span>
         {toolbar.map(({ action, icon: Icon, label, shortcut, group, disabled }, index) => (
           <span className="toolbar-item-wrap" key={action}>
             {index > 0 && group !== toolbar[index - 1].group && <span className="toolbar-divider" />}
@@ -54,12 +60,15 @@ export function DocumentBar({
       </div>
 
       <div className="document-stats" aria-label="Document details">
-        <span>{words.toLocaleString()} words</span>
+        <span className="stat-count">{words.toLocaleString()} words</span>
         <i />
-        <span>{minutes} min read</span>
+        <span className="stat-count">{minutes} min read</span>
         <span className={`save-indicator ${saveState}`}>
-          <b /> {saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Not saved' : 'Saving'}
+          <b /> {saveStatusText(saveState, failure)}
         </span>
+        {saveState === 'error' && (
+          <button type="button" className="save-download" onClick={onDownload}>Download this note</button>
+        )}
       </div>
     </div>
   )

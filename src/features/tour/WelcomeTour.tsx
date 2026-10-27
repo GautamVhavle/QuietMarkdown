@@ -217,7 +217,7 @@ function PrivacySeal({ reduced }: SceneProps) {
         animate="center"
         variants={{ center: { transition: { staggerChildren: 0.28, delayChildren: 1.9 } } }}
       >
-        {['No account', 'No uploads', 'No analytics'].map((point) => (
+        {['No account', 'No uploads', 'Drafts stay local'].map((point) => (
           <motion.li key={point} variants={{ enter: { opacity: 0, y: 8 }, center: { opacity: 1, y: 0 } }}>
             <Check size={12} /> {point}
           </motion.li>

@@ -4,11 +4,11 @@
 .workspace.mode-write .preview-pane, .workspace.mode-write .pane-divider,
 .workspace.mode-preview .editor-pane, .workspace.mode-preview .pane-divider { display: none; }
 .editor-pane, .preview-pane { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
-.editor-pane { background: var(--surface); }
-.preview-pane { background: var(--surface-soft); }
+.editor-pane { background: var(--sheet); }
+.preview-pane { position: relative; background: var(--sheet); }
 .pane-divider { background: var(--line); }
-.pane-label { justify-content: space-between; height: 31px; padding: 0 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink-faint); font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-.pane-label span:last-child { font-weight: 500; letter-spacing: .04em; }
+.pane-label { justify-content: space-between; height: 31px; padding: 0 16px; border-bottom: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.pane-label span:last-child { font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; font-weight: 400; letter-spacing: 0; }
 .editor-wrap { position: relative; flex: 1; min-height: 0; }
 .editor-wrap textarea {
   position: relative;
@@ -22,15 +22,15 @@
   outline: none;
   background: transparent;
   color: var(--ink);
-  caret-color: var(--accent);
+  caret-color: var(--proof);
   font-family: 'DM Mono', 'SFMono-Regular', Consolas, monospace;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.82;
   tab-size: 2;
 }
-.editor-wrap textarea::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.editor-wrap textarea::selection { background: color-mix(in srgb, var(--proof) 22%, transparent); }
 .editor-empty { position: absolute; top: 44px; left: clamp(28px, 5.4vw, 86px); display: flex; flex-direction: column; gap: 7px; color: var(--ink-faint); pointer-events: none; }
-.editor-empty strong { margin-top: 5px; color: var(--ink-soft); font-family: 'Newsreader', Georgia, serif; font-size: 24px; font-weight: 500; }
+.editor-empty strong { margin-top: 5px; color: var(--ink-soft); font-size: 16px; font-weight: 500; }
 .editor-empty span { font-size: 11px; }
 .preview-scroll { flex: 1; min-height: 0; overflow: auto; padding: 42px clamp(28px, 6vw, 90px) 120px; }

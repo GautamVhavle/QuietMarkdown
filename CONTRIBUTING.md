@@ -69,7 +69,7 @@ Tests share one dev server started by Playwright on `127.0.0.1:4173`. The suite 
 - Keep changes focused and explain the user-facing value in the description.
 - Preserve responsive behavior for desktop and mobile; verify at least one narrow viewport manually if you touch layout.
 - Add or update Playwright coverage for changed user interactions.
-- Do not add remote fonts, analytics, credentials, or server-only dependencies. New npm dependencies need a clear justification in the PR body.
+- Do not add analytics that can see document text, clipboard contents, or export payloads. Page views use the Vercel Web Analytics component in `src/main.tsx`. Do not add remote fonts, credentials, or server-only dependencies. New npm dependencies need a clear justification in the PR body.
 - If you change brand assets, regenerate them with `npm run assets:generate` rather than editing binaries by hand.
 - Update [CHANGELOG.md](CHANGELOG.md) under **Unreleased** for user-visible changes.
 

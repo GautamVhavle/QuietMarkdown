@@ -7,7 +7,6 @@ import {
   FolderOpen,
   Keyboard,
   Moon,
-  ShieldCheck,
   Sun,
 } from 'lucide-react'
 import { Columns2, Eye, PenLine } from 'lucide-react'
@@ -53,7 +52,6 @@ export function AppHeader({
       >
         <span className="brand-mark" aria-hidden="true">Q</span>
         <span className="brand-name">QuietMarkdown</span>
-        <span className="local-badge" aria-hidden="true"><ShieldCheck size={11} /> Private</span>
       </button>
 
       <nav className="view-switcher" aria-label="Document view">

@@ -2,6 +2,12 @@
 
 All notable changes to QuietMarkdown are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Page views**: Vercel Web Analytics counts visits. Document text, titles, and exports are not included.
+
 ## [1.2.0], 2026-09-14
 
 ### Added

@@ -39,7 +39,7 @@
 
 Most Markdown tools force a tradeoff: bare browser utilities with fragile exports, or heavy workspaces that make a blank page feel like setup. QuietMarkdown stays calm on the surface and capable underneath.
 
-- **🔒 Private by design.** No account, backend, database, analytics, or uploads. Words never leave your device.
+- **🔒 Private by design.** No account, backend, database, or uploads. Page views are counted. The words stay on your device.
 - **📚 A library, not a lone note.** Create, switch, duplicate, and delete documents in one workspace.
 - **⚡ Fast where it matters.** Live split preview, instant find & replace, honest autosave state.
 - **📄 Files you own.** Open, drag & drop, paste images into, and download plain `.md` files. Markdown is the source of truth.
@@ -191,7 +191,7 @@ Markdown is parsed into headings, paragraphs, lists, tables, code, and images, t
 
 ## Privacy
 
-Everything runs in the browser. Drafts, preferences, and embedded images live in `localStorage` on your device. No accounts, uploads, analytics, or telemetry of any kind.
+Everything runs in the browser. Drafts, preferences, and embedded images live in `localStorage` on your device. There are no accounts and no uploads. Vercel Web Analytics counts page views only. Document text, titles, and exports are not sent.
 
 Practical notes:
 

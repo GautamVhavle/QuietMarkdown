@@ -6,6 +6,7 @@ import { StandardFonts, type PDFDocument, type PDFFont } from 'pdf-lib'
 
 import type { ExportFontDef } from '../../lib/fonts'
 
+import { fontFallbackLabel } from './pdfFailure'
 import { embedFontFaces, type EmbeddedFaces } from './pdfFontFetch'
 
 export interface FontSet {
@@ -22,6 +23,8 @@ export interface FontSet {
   /** True when the body face is an embedded TTF (full Unicode). False when
    * falling back to standard fonts (WinAnsi only, needs pdfEncode). */
   unicode: boolean
+  /** Set when a requested face could not be fetched. Names the substitute. */
+  fontFallback: string | null
 }
 
 async function standard(pdf: PDFDocument, name: (typeof StandardFonts)[keyof typeof StandardFonts]) {
@@ -88,5 +91,8 @@ export async function loadFonts(
     mono: isMonoBody ? bodyFont : stdMono,
     monoBold: isMonoBody ? bodyBold : stdMonoBold,
     unicode: bodyFaces?.regular != null,
+    fontFallback: bodyFaces?.regular == null || headingFaces?.regular == null
+      ? fontFallbackLabel(bodyDef.pdf)
+      : null,
   }
 }

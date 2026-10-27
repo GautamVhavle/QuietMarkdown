@@ -3,29 +3,34 @@
 // clobber a duplicate/delete that happened while the timer was pending.
 import { useEffect, useRef, useState } from 'react'
 
-import { writeStorageJson } from '../../shared/lib/storage'
-import { LIBRARY_KEY } from '../../shared/settings/storageKeys'
-
-import { createDocId, loadLibrary } from './libraryStore'
-import { MAX_LIBRARY_DOCS, type Library } from './types'
+import { retryFailedImages } from './imageStore'
+import { createDocId, persistDocuments, removeDocBody, type PersistResult } from './libraryStore'
+import { MAX_LIBRARY_DOCS, type Library, type StorageFailure } from './types'
 
 export interface DocumentSnapshot {
   id: string
   title: string
   markdown: string
-  currentDocument: string
 }
 
 export function useDocumentLibrary(
   snapshot: DocumentSnapshot,
   onOpenDoc: (title: string, markdown: string) => void,
   onToast: (message: string) => void,
-  initial?: { library: Library; activeId: string; title: string; markdown: string },
+  initial?: {
+    library: Library
+    activeId: string
+    title: string
+    markdown: string
+    writable?: boolean
+    writeError?: StorageFailure | null
+  },
+  holdId?: string | null,
 ) {
-  const [initialLibrary] = useState<Library>(() => initial?.library ?? loadLibrary())
+  const writable = initial?.writable !== false
+  const [initialLibrary] = useState<Library>(() => initial?.library ?? { activeId: '', docs: [] })
   const [library, setLibrary] = useState<Library>(initialLibrary)
   const [activeId, setActiveId] = useState(initial?.activeId ?? initialLibrary.activeId)
-  // First paint is already saved: initial state mirrors the stored library.
   const [lastSavedDocument, setLastSavedDocument] = useState(() =>
     JSON.stringify({
       id: initial?.activeId ?? initialLibrary.activeId,
@@ -33,48 +38,70 @@ export function useDocumentLibrary(
       markdown: initial?.markdown ?? '',
     }),
   )
-  const [storageError, setStorageError] = useState(false)
+  const [storageError, setStorageError] = useState<StorageFailure | null>(initial?.writeError ?? null)
   const saveTimerRef = useRef<number | null>(null)
+  const imageGen = useRef(0)
 
-  // Always read the latest library/document from here so a delayed autosave
-  // cannot clobber a duplicate/delete that happened while the timer was pending.
   const persistRef = useRef({ library, activeId, snapshot })
   useEffect(() => {
     persistRef.current = { library, activeId, snapshot }
   })
 
-  const persistLibrary = (next: Library): boolean => {
-    const result = writeStorageJson(LIBRARY_KEY, next)
+  const applyPersist = (result: PersistResult): boolean => {
     if (!result.ok) {
-      setStorageError(true)
+      setStorageError(result.error)
       return false
     }
-    setStorageError(false)
+    const generation = imageGen.current + 1
+    imageGen.current = generation
+    void Promise.all([result.imagesPending, retryFailedImages()]).then(([fresh, retried]) => {
+      if (imageGen.current !== generation) return
+      setStorageError(fresh ?? retried)
+    })
     return true
   }
 
-  // Write the ACTIVE document's latest content into the library and storage,
-  // and mirror it into component state so later operations never act on a
-  // stale snapshot. Always build the next state from the returned value.
-  const flushActiveDoc = (): { library: Library; ok: boolean } => {
+  const writeLibrary = (next: Library, bodyIds: readonly string[]): boolean => {
+    if (!writable) {
+      setStorageError('blocked')
+      return false
+    }
+    return applyPersist(persistDocuments(next, bodyIds))
+  }
+
+  const flushActiveDoc = (): { library: Library; ok: boolean; error: StorageFailure | null } => {
     const current = persistRef.current
+    if (holdId && current.activeId === holdId) {
+      return { library: current.library, ok: true, error: null }
+    }
     const doc = current.snapshot
     const next: Library = {
       activeId: current.activeId,
       docs: current.library.docs.map((entry) => (
         entry.id === current.activeId
-          ? { ...entry, title: doc.title, markdown: doc.markdown, updatedAt: Date.now() }
+          ? { ...entry, title: doc.title, markdown: doc.markdown, updatedAt: Date.now(), corrupt: undefined }
           : entry
       )),
     }
-    const ok = persistLibrary(next)
-    setLibrary(next)
-    persistRef.current.library = next
-    return { library: next, ok }
+    const result = writable
+      ? persistDocuments(next, [current.activeId])
+      : { ok: false as const, error: 'blocked' as const, failedId: null, imagesPending: Promise.resolve(null), library: next }
+    const ok = writable ? applyPersist(result) : false
+    if (!writable) setStorageError('blocked')
+    const stored = ok ? result.library : next
+    setLibrary(stored)
+    persistRef.current.library = stored
+    return { library: stored, ok, error: result.error }
   }
 
   const markSavedIfCurrent = (ok: boolean) => {
-    if (ok) setLastSavedDocument(persistRef.current.snapshot.currentDocument)
+    if (!ok) return
+    const current = persistRef.current
+    setLastSavedDocument(JSON.stringify({
+      id: current.activeId,
+      title: current.snapshot.title,
+      markdown: current.snapshot.markdown,
+    }))
   }
 
   useEffect(() => {
@@ -87,8 +114,10 @@ export function useDocumentLibrary(
     return () => {
       if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     }
+    // Title and markdown are the draft. activeId is read from persistRef
+    // inside the timer so a switch cannot be overwritten by a stale closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot.currentDocument])
+  }, [snapshot.title, snapshot.markdown])
 
   useEffect(() => {
     if (!storageError) return
@@ -100,20 +129,21 @@ export function useDocumentLibrary(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageError])
 
-  // Mobile Safari often skips beforeunload; pagehide / tab-hide still fire.
   useEffect(() => {
     const persistQuietly = () => {
+      if (!writable) return
       const current = persistRef.current
+      if (holdId && current.activeId === holdId) return
       const doc = current.snapshot
       const next: Library = {
         activeId: current.activeId,
         docs: current.library.docs.map((entry) => (
           entry.id === current.activeId
-            ? { ...entry, title: doc.title, markdown: doc.markdown, updatedAt: Date.now() }
+            ? { ...entry, title: doc.title, markdown: doc.markdown, updatedAt: Date.now(), corrupt: undefined }
             : entry
         )),
       }
-      writeStorageJson(LIBRARY_KEY, next)
+      persistDocuments(next, [current.activeId])
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') persistQuietly()
@@ -125,18 +155,17 @@ export function useDocumentLibrary(
       window.removeEventListener('pagehide', persistQuietly)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [])
+  }, [holdId, writable])
 
   const switchDoc = (id: string) => {
     if (id === activeId) return
-    // Persist the outgoing document immediately so nothing is lost mid-switch.
     if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = null
     const { library: flushed } = flushActiveDoc()
     const target = flushed.docs.find((doc) => doc.id === id)
     if (!target) return
     const next: Library = { activeId: id, docs: flushed.docs }
-    persistLibrary(next)
+    writeLibrary(next, [])
     persistRef.current.library = next
     persistRef.current.activeId = id
     setLibrary(next)
@@ -153,10 +182,9 @@ export function useDocumentLibrary(
       onToast(`Library holds up to ${MAX_LIBRARY_DOCS} documents`)
       return
     }
-    const docId = createDocId()
-    const doc = { id: docId, title: 'Untitled document', markdown: '', updatedAt: Date.now() }
+    const doc = { id: createDocId(), title: 'Untitled document', markdown: '', updatedAt: Date.now() }
     const next: Library = { activeId: doc.id, docs: [doc, ...flushed.docs] }
-    if (!persistLibrary(next)) return
+    if (!writeLibrary(next, [doc.id])) return
     persistRef.current.library = next
     persistRef.current.activeId = doc.id
     setLibrary(next)
@@ -173,12 +201,12 @@ export function useDocumentLibrary(
       onToast(`Library holds up to ${MAX_LIBRARY_DOCS} documents`)
       return
     }
-    const copy = { ...source, id: createDocId(), title: `${source.title || 'Untitled'} (copy)`, updatedAt: Date.now() }
+    const copy = { ...source, id: createDocId(), title: `${source.title || 'Untitled'} (copy)`, updatedAt: Date.now(), corrupt: undefined }
     const next: Library = {
       activeId,
       docs: [copy, ...current.docs].slice(0, MAX_LIBRARY_DOCS),
     }
-    if (!persistLibrary(next)) return
+    if (!writeLibrary(next, [copy.id])) return
     persistRef.current.library = next
     setLibrary(next)
     onToast('Document duplicated')
@@ -193,10 +221,10 @@ export function useDocumentLibrary(
     const remaining = current.docs.filter((doc) => doc.id !== id)
     let next: Library
     if (id === activeId) {
-      // Switch to the most recently updated remaining document.
       const fallback = [...remaining].sort((a, b) => b.updatedAt - a.updatedAt)[0]
       next = { activeId: fallback.id, docs: remaining }
-      if (!persistLibrary(next)) return
+      removeDocBody(id)
+      if (!writeLibrary(next, [])) return
       persistRef.current.library = next
       persistRef.current.activeId = fallback.id
       setLibrary(next)
@@ -204,21 +232,20 @@ export function useDocumentLibrary(
       onOpenDoc(fallback.title, fallback.markdown)
     } else {
       next = { activeId, docs: remaining }
-      if (!persistLibrary(next)) return
+      removeDocBody(id)
+      if (!writeLibrary(next, [])) return
       persistRef.current.library = next
       setLibrary(next)
     }
     onToast('Document deleted')
   }
 
-  // Open an externally created doc (file import). Persists via the normal
-  // autosave path; switches state immediately so UI never lags storage.
   const openExternalDoc = (doc: { id: string; title: string; markdown: string; updatedAt: number }) => {
     if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current)
     saveTimerRef.current = null
     const { library: flushed } = flushActiveDoc()
     const next: Library = { activeId: doc.id, docs: [doc, ...flushed.docs] }
-    if (!persistLibrary(next)) return false
+    if (!writeLibrary(next, [doc.id])) return false
     persistRef.current.library = next
     persistRef.current.activeId = doc.id
     setLibrary(next)

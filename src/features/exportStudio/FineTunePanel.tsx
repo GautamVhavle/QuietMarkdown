@@ -126,7 +126,6 @@ export function TuneColor({ label, value, onChange }: ColorFieldProps) {
 }
 
 interface FineTunePanelProps {
-  step: string
   title: string
   subtitle: string
   tune: FineTuneSettings
@@ -137,7 +136,6 @@ interface FineTunePanelProps {
 }
 
 export function FineTunePanel({
-  step,
   title,
   subtitle,
   tune,
@@ -154,7 +152,6 @@ export function FineTunePanel({
     <section className="control-section" aria-label={`${title} fine-tuning`}>
       <div className="section-heading">
         <div className="section-title">
-          <span className="step-badge" aria-hidden="true">{step}</span>
           <div>
             <h3>{title}</h3>
             <p>{subtitle}</p>

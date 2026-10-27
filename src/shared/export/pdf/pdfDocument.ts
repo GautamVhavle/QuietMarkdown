@@ -15,11 +15,16 @@ import { drawChrome, drawPageNumber, drawWatermark } from './pdfChrome'
 import { hexRgb } from './pdfEncode'
 import { loadFonts } from './pdfFonts'
 
+export interface MarkdownPdf {
+  bytes: Uint8Array
+  fontFallback: string | null
+}
+
 export async function createMarkdownPdf(
   title: string,
   html: string,
   settings: ExportSettings,
-): Promise<Uint8Array> {
+): Promise<MarkdownPdf> {
   const pdf = await PDFDocument.create()
   pdf.setTitle(title || 'Untitled document')
   pdf.setSubject('Created locally with QuietMarkdown')
@@ -104,5 +109,8 @@ export async function createMarkdownPdf(
     drawPageNumber(pdfPage, recipe, fonts, colors, size, margin, index)
   })
 
-  return pdf.save({ useObjectStreams: true })
+  return {
+    bytes: await pdf.save({ useObjectStreams: true }),
+    fontFallback: fonts.fontFallback,
+  }
 }

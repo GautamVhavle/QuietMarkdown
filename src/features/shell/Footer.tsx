@@ -1,12 +1,18 @@
 // App footer: privacy link, credit, repo link, save state, export shortcut.
 import { FileDown, ShieldCheck } from 'lucide-react'
 
+import type { StorageFailure } from '../library/types'
+
+import { saveStatusText } from './saveCopy'
+
 interface FooterProps {
   saveState: 'saved' | 'saving' | 'error'
+  failure: StorageFailure | null
+  onDownload: () => void
   onOpenExport: () => void
 }
 
-export function Footer({ saveState, onOpenExport }: FooterProps) {
+export function Footer({ saveState, failure, onDownload, onOpenExport }: FooterProps) {
   return (
     <footer className="app-footer">
       <div className="footer-left">
@@ -32,7 +38,10 @@ export function Footer({ saveState, onOpenExport }: FooterProps) {
           <GitHubMark size={13} />
           <span>View on GitHub</span>
         </a>
-        <span className={`footer-save ${saveState}`}><b /> {saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Not saved' : 'Saving'}</span>
+        <span className={`footer-save ${saveState}`}><b /> {saveStatusText(saveState, failure)}</span>
+        {saveState === 'error' && (
+          <button type="button" className="save-download" onClick={onDownload}>Download this note</button>
+        )}
         <button onClick={onOpenExport}><FileDown size={14} /> Export</button>
       </div>
     </footer>

@@ -65,6 +65,7 @@ export function PreviewPane({
           </button>
         </div>
       </div>
+      <div className="registration-crop" aria-hidden="true"><i /><b /></div>
       <div
         ref={previewRef}
         className={`preview-scroll ${showPageBreaks ? 'is-paged' : ''}`}

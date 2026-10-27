@@ -1,5 +1,5 @@
 // Floating overlays: toast, drop target, shortcuts popover, documents menu.
-import { Check, Copy, Eraser, FilePlus2, FileText, Trash2, UploadCloud, X } from 'lucide-react'
+import { Check, Copy, Download, Eraser, FilePlus2, FileText, Trash2, UploadCloud, X } from 'lucide-react'
 
 import { relativeTime } from '../../shared/lib/relativeTime'
 import type { Library } from '../library/types'
@@ -68,6 +68,8 @@ interface DocsPopoverProps {
   onNew: () => void
   onClear: () => void
   onClose: () => void
+  onDownload: (id: string) => void
+  quarantinedId: string | null
 }
 
 export function DocsPopover({
@@ -81,6 +83,8 @@ export function DocsPopover({
   onNew,
   onClear,
   onClose,
+  onDownload,
+  quarantinedId,
 }: DocsPopoverProps) {
   return (
     <>
@@ -102,13 +106,29 @@ export function DocsPopover({
             .sort((a, b) => (b.id === activeId ? 1 : 0) - (a.id === activeId ? 1 : 0) || b.updatedAt - a.updatedAt)
             .map((doc) => {
               const isActive = doc.id === activeId
+              const quarantined = doc.id === quarantinedId
               return (
                 <li key={doc.id} className={isActive ? 'active' : ''}>
                   <button className="docs-row" onClick={() => onSwitch(doc.id)} title={doc.title}>
                     <FileText size={14} />
-                    <span className="docs-title">{doc.title || 'Untitled document'}{isActive ? ' · open' : ''}</span>
+                    <span className="docs-title">
+                      {doc.title || 'Untitled document'}
+                      {isActive ? ' · open' : ''}
+                      {quarantined ? ' · quarantined' : ''}
+                      {doc.corrupt ? ' · damaged' : ''}
+                    </span>
                     <span className="docs-time">{relativeTime(doc.updatedAt)}</span>
                   </button>
+                  {(quarantined || doc.corrupt) && (
+                    <button
+                      className="docs-action"
+                      aria-label={`Download ${doc.title}`}
+                      title="Download this note"
+                      onClick={() => onDownload(doc.id)}
+                    >
+                      <Download size={13} />
+                    </button>
+                  )}
                   <button
                     className="docs-action"
                     aria-label={`Duplicate ${doc.title}`}
@@ -141,6 +161,10 @@ export function DocsPopover({
             })}
         </ul>
         <div className="docs-clear-row">
+          <button className="docs-clear" onClick={() => onDownload(activeId)}>
+            <Download size={13} />
+            Download this note
+          </button>
           <button className="docs-clear" onClick={onClear} title="Erase this page and begin anew">
             <Eraser size={13} />
             Clear page · start fresh

@@ -12,21 +12,24 @@ import { useFindReplace } from '../features/findReplace/useFindReplace'
 import { applyFormat, type FormatAction } from '../features/formatting/formatting'
 import { toolbarConfig } from '../features/formatting/toolbarConfig'
 import { useImageEmbed } from '../features/images/useImageEmbed'
-import { createDocId, loadLibrary } from '../features/library/libraryStore'
+import { downloadNote } from '../features/library/downloadNote'
+import { expandImageRefs, imageIdsIn } from '../features/library/imageRefs'
+import { getImage, peekImage } from '../features/library/imageStore'
+import { createDocId, loadLibrary, persistDocuments } from '../features/library/libraryStore'
 import { MAX_LIBRARY_DOCS, type LibraryDoc } from '../features/library/types'
 import { useDocumentLibrary } from '../features/library/useDocumentLibrary'
 import { PreviewPane } from '../features/preview/PreviewPane'
 import { useScrollSync } from '../features/preview/useScrollSync'
 import { AppHeader } from '../features/shell/AppHeader'
+import { clearCrash, clearQuarantineFlag, crashCount, peekQuarantine, publishCrashDraft } from '../features/shell/crashDraft'
 import { DocumentBar } from '../features/shell/DocumentBar'
 import { Footer } from '../features/shell/Footer'
 import { DocsPopover, DropOverlay, ShortcutsPopover, Toast } from '../features/shell/Overlays'
+import { saveFailureMessage } from '../features/shell/saveCopy'
 import { useAppShortcuts } from '../features/shell/useAppShortcuts'
 import { usePlatform } from '../features/shell/usePlatform'
 import { useTheme } from '../features/shell/useTheme'
 import { useToast } from '../features/shell/useToast'
-import { downloadBlob } from '../shared/lib/download'
-import { smartFilename } from '../shared/lib/filenames'
 import { countDocument, renderMarkdown } from '../shared/lib/markdown'
 import { STARTER_TITLE, starterMarkdown } from '../shared/lib/starter'
 import { readStorageJson, writeStorageJson } from '../shared/lib/storage'
@@ -69,12 +72,38 @@ const loadSettings = () => {
 
 export function App() {
   // Seed synchronously from the stored library so first paint, preview,
-  // and save state all agree before any effect runs.
-  const [initial] = useState(() => {
-    const stored = loadLibrary()
-    const activeDoc = stored.docs.find((doc) => doc.id === stored.activeId) ?? stored.docs[0]
-    return { library: stored, activeId: stored.activeId, title: activeDoc.title, markdown: activeDoc.markdown }
+  // and save state all agree before any effect runs. A note that has
+  // crashed twice is not mounted; the library opens instead.
+  const [boot] = useState(() => {
+    const loaded = loadLibrary()
+    const flagged = peekQuarantine()
+    let library = loaded.library
+    let active = library.docs.find((doc) => doc.id === library.activeId) ?? library.docs[0]
+    let quarantinedId: string | null = null
+    if (crashCount(active.id) >= 2 || flagged === active.id) {
+      quarantinedId = active.id
+      const other = library.docs.find((doc) => doc.id !== active.id)
+      if (other) {
+        library = { ...library, activeId: other.id }
+        active = other
+      }
+    }
+    const held = quarantinedId === active.id
+    return {
+      library,
+      activeId: library.activeId,
+      title: active.title,
+      markdown: held ? '' : active.markdown,
+      quarantinedId,
+      holdId: held ? quarantinedId : null,
+      openDocs: Boolean(quarantinedId),
+      truncated: loaded.truncated,
+      corruptIds: loaded.corruptIds,
+      writable: loaded.writable,
+      writeError: loaded.writeError,
+    }
   })
+  const initial = boot
   const [title, setTitle] = useState(initial.title)
   const [editor, setEditor] = useReducer(
     editorReducer,
@@ -86,8 +115,8 @@ export function App() {
   )
   const [exportOpen, setExportOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [docsOpen, setDocsOpen] = useState(false)
-  const [welcomeOpen, setWelcomeOpen] = useState(() => readStorageJson<{ seen?: boolean }>(WELCOME_KEY).value?.seen !== true)
+  const [docsOpen, setDocsOpen] = useState(boot.openDocs)
+  const [welcomeOpen, setWelcomeOpen] = useState(() => !boot.quarantinedId && readStorageJson<{ seen?: boolean }>(WELCOME_KEY).value?.seen !== true)
   const [deleteArmId, setDeleteArmId] = useState<string | null>(null)
   const [exportSettings, setExportSettings] = useState<ExportSettings>(loadSettings)
   const [showPageBreaks, setShowPageBreaks] = useState(
@@ -101,11 +130,24 @@ export function App() {
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastTypedAtRef = useRef(0)
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>(() => {
+    const urls: Record<string, string> = {}
+    for (const id of imageIdsIn(initial.markdown)) {
+      const url = peekImage(id)
+      if (url) urls[id] = url
+    }
+    return urls
+  })
 
   // The rendered preview trails typing via useDeferredValue so keystrokes
   // never block on Markdown parsing + sanitizing, even in huge documents.
+  // Image bytes are filled in after first paint.
   const deferredMarkdown = useDeferredValue(markdown)
-  const rendered = useMemo(() => renderMarkdown(deferredMarkdown), [deferredMarkdown])
+  const previewMarkdown = useMemo(
+    () => expandImageRefs(deferredMarkdown, imageUrls),
+    [deferredMarkdown, imageUrls],
+  )
+  const rendered = useMemo(() => renderMarkdown(previewMarkdown), [previewMarkdown])
   const stats = useMemo(() => countDocument(markdown), [markdown])
 
   const openDoc = (nextTitle: string, nextMarkdown: string) => {
@@ -128,10 +170,11 @@ export function App() {
     deleteDoc,
     openExternalDoc,
   } = useDocumentLibrary(
-    { id: initial.activeId, title, markdown, currentDocument: JSON.stringify({ id: initial.activeId, title, markdown }) },
+    { id: initial.activeId, title, markdown },
     openDoc,
     setToast,
     initial,
+    boot.holdId,
   )
 
   const currentDocument = useMemo(
@@ -139,6 +182,59 @@ export function App() {
     [activeId, title, markdown],
   )
   const saveState: SaveState = storageError ? 'error' : currentDocument === lastSavedDocument ? 'saved' : 'saving'
+
+  const heldNote = boot.holdId ? library.docs.find((doc) => doc.id === boot.holdId) : undefined
+  publishCrashDraft({
+    id: heldNote?.id ?? activeId,
+    title: heldNote?.title ?? title,
+    markdown: heldNote?.markdown ?? markdown,
+  })
+
+  useEffect(() => {
+    const ids = imageIdsIn(markdown).filter((id) => !imageUrls[id])
+    if (ids.length === 0) return
+    let cancelled = false
+    void Promise.all(ids.map(async (id) => [id, peekImage(id) ?? await getImage(id)] as const)).then((pairs) => {
+      if (cancelled) return
+      setImageUrls((current) => {
+        const next = { ...current }
+        let changed = false
+        for (const [id, url] of pairs) {
+          if (url && next[id] !== url) {
+            next[id] = url
+            changed = true
+          }
+        }
+        return changed ? next : current
+      })
+    })
+    return () => { cancelled = true }
+  }, [markdown, imageUrls])
+
+  useEffect(() => {
+    clearQuarantineFlag()
+    if (boot.quarantinedId && boot.writable && boot.activeId !== boot.quarantinedId) {
+      persistDocuments(boot.library, [])
+    }
+  }, [boot])
+
+  useEffect(() => {
+    if (!boot.holdId) clearCrash(activeId)
+  }, [activeId, boot.holdId])
+
+  useEffect(() => {
+    const parts: string[] = []
+    if (boot.truncated > 0) {
+      const noun = boot.truncated === 1 ? 'document was' : 'documents were'
+      parts.push(`${MAX_LIBRARY_DOCS} documents loaded. ${boot.truncated} older ${noun} left out.`)
+    }
+    if (boot.corruptIds.length > 0) {
+      parts.push('A saved note was damaged. The raw text is in the library so you can download it.')
+    }
+    if (!boot.writable) parts.push('This library was saved by a newer version and was left untouched.')
+    if (boot.quarantinedId) parts.push('This note crashed twice, so it was left in the library instead of opened.')
+    if (parts.length > 0) setToast(parts.join(' '))
+  }, [boot, setToast])
 
   const { handleEditorScroll, handlePreviewScroll } = useScrollSync(editorRef, previewScrollRef)
 
@@ -218,14 +314,18 @@ export function App() {
       window.clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
     }
-    const { ok } = flushActiveDoc()
+    const { ok, error } = flushActiveDoc()
     markSavedIfCurrent(ok)
-    setToast(ok ? 'Saved locally in this browser' : 'Could not save in this browser')
+    setToast(ok ? 'Saved in this browser.' : saveFailureMessage(error ?? 'blocked'))
   }
 
-  const downloadMarkdown = () => {
-    downloadBlob(markdown, `${smartFilename(markdown, title)}.md`, 'text/markdown;charset=utf-8')
-    setToast('Markdown downloaded')
+  const downloadMarkdown = (id?: string) => {
+    const docId = id ?? activeId
+    const doc = library.docs.find((entry) => entry.id === docId)
+    const useEditor = docId === activeId && docId !== boot.holdId
+    const source = useEditor ? markdown : (doc?.markdown ?? markdown)
+    const name = useEditor ? title : (doc?.title || title)
+    void downloadNote(name, source).then(() => setToast('Markdown downloaded.'))
   }
 
   const loadFile = async (file: File) => {
@@ -430,7 +530,15 @@ export function App() {
         words={stats.words}
         minutes={stats.minutes}
         saveState={saveState}
+        failure={storageError}
+        onDownload={() => downloadMarkdown()}
       />
+
+      {boot.holdId && (
+        <p className="quarantine-banner" role="status">
+          This note crashed twice, so it is not open. Download it from Documents.
+        </p>
+      )}
 
       <main className={`workspace mode-${viewMode}`}>
         <EditorPane
@@ -472,7 +580,12 @@ export function App() {
         />
       </main>
 
-      <Footer saveState={saveState} onOpenExport={() => setExportOpen(true)} />
+      <Footer
+        saveState={saveState}
+        failure={storageError}
+        onDownload={() => downloadMarkdown(boot.holdId ?? activeId)}
+        onOpenExport={() => setExportOpen(true)}
+      />
 
       <input
         ref={fileInputRef}
@@ -501,6 +614,8 @@ export function App() {
           onNew={() => { createDoc(); setDocsOpen(false); requestAnimationFrame(() => editorRef.current?.focus()) }}
           onClear={clearActiveDoc}
           onClose={() => setDocsOpen(false)}
+          onDownload={(id) => { downloadMarkdown(id); setDocsOpen(false) }}
+          quarantinedId={boot.quarantinedId}
         />
       )}
 
